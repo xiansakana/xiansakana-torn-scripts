@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 攻击数据筛选工具
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.0
 // @description  筛选攻击数据，支持按派系、Warlord Bonus和时间范围过滤
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*

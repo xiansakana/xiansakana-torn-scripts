@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 公司申请监听工具
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.0.0
 // @description  实时监听公司申请，有新申请时发送桌面通知
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*

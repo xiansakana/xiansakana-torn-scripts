@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 物品购买均价计算器
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.0.0
 // @description  计算购买某种物品的数量、单价、购买方式和均价
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
