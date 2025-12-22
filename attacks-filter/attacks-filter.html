@@ -1,0 +1,537 @@
+<style>
+  /* 只对工具容器内的元素应用样式，不影响主题元素 */
+  /* 使用主题的暗色模式颜色 */
+  .torn-tool-container {
+    margin: 0;
+    padding: 20px;
+    background-color: #282828;
+    color: #ccc;
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+  }
+  .torn-tool-container .container {
+    background: #333;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .torn-tool-container .input-group {
+    margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .torn-tool-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #ccc;
+  }
+  .torn-tool-container input,
+  .torn-tool-container select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 16px;
+    background-color: #333;
+    color: #ccc;
+    box-sizing: border-box;
+  }
+  .torn-tool-container select {
+    cursor: pointer;
+  }
+  /* 日期时间输入框的日历图标样式 - 确保在暗色背景下可见 */
+  .torn-tool-container input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+  .torn-tool-container
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.8;
+  }
+  .torn-tool-container
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+  .torn-tool-container input:focus,
+  .torn-tool-container select:focus {
+    outline: none;
+    border-color: #4da6ff;
+    box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.25);
+  }
+  .torn-tool-container .time-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .torn-tool-container .time-group .input-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  @media (max-width: 768px) {
+    .torn-tool-container {
+      padding: 10px;
+    }
+    .torn-tool-container .container {
+      padding: 20px;
+    }
+    .torn-tool-container .time-group {
+      flex-direction: column;
+      gap: 0;
+    }
+    .torn-tool-container .time-group .input-group {
+      min-width: 100%;
+    }
+  }
+  .torn-tool-container button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  .torn-tool-container button:hover {
+    background-color: #0056b3;
+  }
+  .torn-tool-container button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .torn-tool-container .result-section {
+    margin-top: 30px;
+    display: none;
+  }
+  .torn-tool-container h1 {
+    color: #ccc;
+  }
+  .torn-tool-container .stats {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #ccc;
+  }
+  .torn-tool-container .stats span {
+    color: #4da6ff;
+    font-weight: bold;
+  }
+  .torn-tool-container .attack-item {
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #333;
+    width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .torn-tool-container .attack-item h4 {
+    margin-bottom: 10px;
+    color: #ccc;
+    word-wrap: break-word;
+  }
+  .torn-tool-container .attack-info {
+    line-height: 1.6;
+    color: #ccc;
+    opacity: 0.8;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .torn-tool-container .attack-info p {
+    margin: 8px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .torn-tool-container .error {
+    color: #ff6b6b;
+    margin-top: 20px;
+    font-weight: bold;
+  }
+</style>
+
+<div class="torn-tool-container">
+  <div class="container">
+    <h1>Torn API 攻击数据筛选工具</h1>
+    <!-- 输入区域 -->
+    <div class="input-area">
+      <div class="input-group">
+        <label for="apiKey">API Key</label>
+        <input type="text" id="apiKey" placeholder="请输入你的Torn API Key" />
+      </div>
+      <div class="input-group">
+        <label for="filterType">过滤器类型</label>
+        <select id="filterType">
+          <option value="outgoing">Outgoing（发出的攻击）</option>
+          <option value="incoming">Incoming（收到的攻击）</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label for="defenderFaction">目标Defender Faction ID（数值）</label>
+        <input type="number" id="defenderFaction" placeholder="例如：8076" />
+      </div>
+      <div class="input-group">
+        <label for="warlordBonus">Warlord Bonus 目标值</label>
+        <input
+          type="number"
+          step="0.01"
+          id="warlordBonus"
+          placeholder="例如：1.39"
+        />
+      </div>
+      <div class="time-group">
+        <div class="input-group">
+          <label for="startTime">开始时间</label>
+          <input type="datetime-local" id="startTime" />
+        </div>
+        <div class="input-group">
+          <label for="endTime">结束时间</label>
+          <input type="datetime-local" id="endTime" />
+        </div>
+      </div>
+      <button id="queryBtn">查询并筛选</button>
+    </div>
+    <!-- 错误提示 -->
+    <div class="error" id="errorMsg"></div>
+    <!-- 结果展示区域 -->
+    <div class="result-section" id="resultSection">
+      <div class="stats">
+        符合条件的条目总数：<span id="totalCount">0</span>
+      </div>
+      <div id="attackList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 检测是否通过Pjax加载，如果是则强制刷新页面
+  (function () {
+    // 使用sessionStorage标记来检测是否是首次访问
+    const storageKey = "torn-tool-direct-load";
+    const isDirectLoad = !sessionStorage.getItem(storageKey);
+
+    if (!isDirectLoad) {
+      // 如果不是直接加载（可能是通过Pjax），强制完整刷新
+      sessionStorage.removeItem(storageKey);
+      window.location.reload();
+      return;
+    }
+
+    // 标记为直接加载
+    sessionStorage.setItem(storageKey, "true");
+
+    // 页面卸载时清除标记
+    window.addEventListener("beforeunload", function () {
+      sessionStorage.removeItem(storageKey);
+    });
+  })();
+
+  // 元素获取
+  const apiKeyInput = document.getElementById("apiKey");
+  const filterTypeInput = document.getElementById("filterType");
+  const defenderFactionInput = document.getElementById("defenderFaction");
+  const warlordBonusInput = document.getElementById("warlordBonus");
+  const startTimeInput = document.getElementById("startTime");
+  const endTimeInput = document.getElementById("endTime");
+  const queryBtn = document.getElementById("queryBtn");
+  const errorMsg = document.getElementById("errorMsg");
+  const resultSection = document.getElementById("resultSection");
+  const totalCount = document.getElementById("totalCount");
+  const attackList = document.getElementById("attackList");
+
+  // 时间转换：datetime-local转Unix时间戳（秒级，匹配API格式）
+  function convertToTimestamp(dateStr) {
+    if (!dateStr) return null;
+    return Math.floor(new Date(dateStr).getTime() / 1000);
+  }
+
+  // 构建查询参数
+  function buildQueryParams(apiKey, filters, limit, sort, from, to) {
+    const params = new URLSearchParams();
+    if (filters && filters.length > 0) {
+      filters.forEach((filter) => params.append("filters", filter));
+    }
+    params.append("limit", limit.toString());
+    params.append("sort", sort);
+    if (from) params.append("from", from.toString());
+    if (to) params.append("to", to.toString());
+    params.append("key", apiKey);
+    return params.toString();
+  }
+
+  // 获取单页数据
+  async function fetchAttacksPage(apiKey, filters, limit, sort, from, to) {
+    const queryString = buildQueryParams(
+      apiKey,
+      filters,
+      limit,
+      sort,
+      from,
+      to
+    );
+    const apiUrl = `https://api.torn.com/v2/user/attacks?${queryString}`;
+
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败：${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  // 获取所有分页数据
+  async function fetchAllAttacks(apiKey, filters, sort, from, to) {
+    const limit = 100; // API最大限制
+    let allAttacks = [];
+    let hasMore = true;
+    let pageCount = 0;
+    const maxPages = 1000; // 防止无限循环
+
+    while (hasMore && pageCount < maxPages) {
+      pageCount++;
+      const data = await fetchAttacksPage(
+        apiKey,
+        filters,
+        limit,
+        sort,
+        from,
+        to
+      );
+
+      if (data.attacks && data.attacks.length > 0) {
+        allAttacks = allAttacks.concat(data.attacks);
+
+        // 如果返回的数据少于limit，说明已经获取完所有数据
+        if (data.attacks.length < limit) {
+          hasMore = false;
+        } else {
+          // 使用最后一页的最后一条记录的started时间减1作为下一次查询的to
+          // 这样可以避免时间重叠，确保不会重复获取数据
+          const lastAttack = data.attacks[data.attacks.length - 1];
+          const newTo = lastAttack.started - 1;
+
+          // 如果新的to值小于等于from，说明已经获取完所有数据
+          if (newTo <= from) {
+            hasMore = false;
+          } else {
+            to = newTo;
+          }
+        }
+      } else {
+        hasMore = false;
+      }
+
+      // 添加小延迟，避免请求过快
+      if (hasMore) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    if (pageCount >= maxPages) {
+      console.warn(`已达到最大页数限制（${maxPages}页），已停止获取`);
+    }
+
+    // 去重处理，以attack.id为唯一标识
+    const uniqueAttacks = [];
+    const seenIds = new Set();
+
+    allAttacks.forEach((attack) => {
+      if (!seenIds.has(attack.id)) {
+        seenIds.add(attack.id);
+        uniqueAttacks.push(attack);
+      }
+    });
+
+    console.log(
+      `原始数据：${allAttacks.length} 条，去重后：${uniqueAttacks.length} 条`
+    );
+    return uniqueAttacks;
+  }
+
+  // 筛选数据逻辑
+  function filterAttacks(attacks, filterParams) {
+    const { defenderFaction, warlordBonus, startTimestamp, endTimestamp } =
+      filterParams;
+    const filtered = [];
+
+    attacks.forEach((attack) => {
+      // 条件1：defender.faction.id匹配
+      if (attack.defender?.faction?.id !== defenderFaction) return;
+
+      // 条件2：ended时间在时间范围内
+      const attackEndTime = attack.ended;
+      if (attackEndTime < startTimestamp || attackEndTime > endTimestamp)
+        return;
+
+      // 条件3：如果用户输入了warlordBonus目标值，则检查warlord字段是否匹配
+      if (warlordBonus !== null) {
+        const warlordValue = attack.modifiers?.warlord;
+        if (warlordValue !== warlordBonus) return;
+      }
+
+      // 所有条件满足，加入结果
+      filtered.push(attack);
+    });
+
+    return filtered;
+  }
+
+  // 渲染筛选结果
+  function renderResults(filteredAttacks) {
+    totalCount.textContent = filteredAttacks.length;
+    attackList.innerHTML = "";
+
+    if (filteredAttacks.length === 0) {
+      attackList.innerHTML = "<p>暂无符合条件的条目</p>";
+      return;
+    }
+
+    filteredAttacks.forEach((attack) => {
+      const attackItem = document.createElement("div");
+      attackItem.className = "attack-item";
+
+      // 时间戳转可读时间
+      const startTime = new Date(attack.started * 1000).toLocaleString("zh-CN");
+      const endTime = new Date(attack.ended * 1000).toLocaleString("zh-CN");
+
+      attackItem.innerHTML = `
+                  <h4>攻击ID：${attack.id}</h4>
+                  <div class="attack-info">
+                      <p>攻击者：${attack.attacker?.name || "未知"}（ID：${
+        attack.attacker?.id || "未知"
+      }，派系：${attack.attacker?.faction?.name || "未知"} [${
+        attack.attacker?.faction?.id || "未知"
+      }]）</p>
+                      <p>防御者：${attack.defender?.name || "未知"}（ID：${
+        attack.defender?.id || "未知"
+      }，派系：${attack.defender?.faction?.name || "未知"} [${
+        attack.defender?.faction?.id || "未知"
+      }]）</p>
+                      <p>开始时间：${startTime}</p>
+                      <p>结束时间：${endTime}</p>
+                      <p>结果：${attack.result || "未知"}</p>
+                      <p>Respect Gain：${attack.respect_gain || 0}</p>
+                      <p>Respect Loss：${attack.respect_loss || 0}</p>
+                      <p>Chain：${attack.chain || 0}</p>
+                      <p>Warlord Modifier：${
+                        attack.modifiers?.warlord || "无"
+                      }</p>
+                      <p>Ranked War：${attack.is_ranked_war ? "是" : "否"}</p>
+                      <p>Raid：${attack.is_raid ? "是" : "否"}</p>
+                      <p>Stealthed：${attack.is_stealthed ? "是" : "否"}</p>
+                  </div>
+              `;
+
+      attackList.appendChild(attackItem);
+    });
+  }
+
+  // 主查询逻辑
+  queryBtn.addEventListener("click", async () => {
+    // 重置状态
+    errorMsg.textContent = "";
+    resultSection.style.display = "none";
+    queryBtn.disabled = true;
+    queryBtn.textContent = "查询中...";
+
+    // 获取并验证参数
+    const apiKey = apiKeyInput.value.trim();
+    const defenderFaction = parseInt(defenderFactionInput.value.trim());
+    const warlordBonus = warlordBonusInput.value.trim()
+      ? parseFloat(warlordBonusInput.value)
+      : null;
+    const startDateStr = startTimeInput.value;
+    const endDateStr = endTimeInput.value;
+
+    if (!apiKey) {
+      errorMsg.textContent = "请输入API Key！";
+      queryBtn.disabled = false;
+      queryBtn.textContent = "查询并筛选";
+      return;
+    }
+    if (isNaN(defenderFaction)) {
+      errorMsg.textContent = "请输入有效的Defender Faction数值！";
+      queryBtn.disabled = false;
+      queryBtn.textContent = "查询并筛选";
+      return;
+    }
+    if (!startDateStr || !endDateStr) {
+      errorMsg.textContent = "请选择完整的时间范围（开始+结束时间）！";
+      queryBtn.disabled = false;
+      queryBtn.textContent = "查询并筛选";
+      return;
+    }
+
+    // 转换时间为Unix时间戳
+    const startTimestamp = convertToTimestamp(startDateStr);
+    const endTimestamp = convertToTimestamp(endDateStr);
+    if (startTimestamp >= endTimestamp) {
+      errorMsg.textContent = "开始时间不能晚于结束时间！";
+      queryBtn.disabled = false;
+      queryBtn.textContent = "查询并筛选";
+      return;
+    }
+
+    try {
+      // 获取过滤器类型
+      const filterType = filterTypeInput.value;
+      const filters = [filterType];
+      const sort = "DESC";
+
+      // 获取所有分页数据
+      errorMsg.textContent = "正在获取数据，请稍候...";
+      const allAttacks = await fetchAllAttacks(
+        apiKey,
+        filters,
+        sort,
+        startTimestamp,
+        endTimestamp
+      );
+
+      if (!allAttacks || allAttacks.length === 0) {
+        errorMsg.textContent = "未获取到任何攻击数据";
+        queryBtn.disabled = false;
+        queryBtn.textContent = "查询并筛选";
+        return;
+      }
+
+      errorMsg.textContent = `已获取 ${allAttacks.length} 条攻击数据，正在筛选...`;
+
+      // 构造筛选参数
+      const filterParams = {
+        defenderFaction,
+        warlordBonus,
+        startTimestamp,
+        endTimestamp,
+      };
+
+      // 筛选数据
+      const filteredAttacks = filterAttacks(allAttacks, filterParams);
+
+      // 渲染结果
+      errorMsg.textContent = "";
+      resultSection.style.display = "block";
+      renderResults(filteredAttacks);
+    } catch (err) {
+      errorMsg.textContent = `错误：${err.message}`;
+      console.error("查询失败：", err);
+    } finally {
+      queryBtn.disabled = false;
+      queryBtn.textContent = "查询并筛选";
+    }
+  });
+</script>
