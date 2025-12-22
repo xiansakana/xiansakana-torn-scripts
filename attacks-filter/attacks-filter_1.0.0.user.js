@@ -128,6 +128,17 @@
             .af-container { width: calc(100vw - 50px); }
             .af-time-group { flex-direction: column; gap: 0; }
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            #attackFilterBtn {
+                right: -30px;
+                transition: right 0.3s ease;
+            }
+            #attackFilterBtn.btn-visible { right: 0; }
+            #attackFilterBtn:hover { right: -30px; }
+            #attackFilterBtn.btn-visible:hover { right: 0; }
+        }
     `);
 
     var btn = document.createElement('button');
@@ -197,6 +208,33 @@
 
     var savedKey = localStorage.getItem('APIKey') || GM_getValue('tornApiKey', '');
     if (savedKey) apiKeyInput.value = savedKey;
+
+    // 移动端滑动手势支持（左滑显示按钮，右滑隐藏按钮）
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var swipeThreshold = 50;
+    var edgeThreshold = 50;
+
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        var touchEndX = e.changedTouches[0].screenX;
+        var touchEndY = e.changedTouches[0].screenY;
+        var diffX = touchEndX - touchStartX;
+        var diffY = Math.abs(touchEndY - touchStartY);
+        var screenWidth = window.innerWidth;
+
+        if (Math.abs(diffX) > diffY && Math.abs(diffX) > swipeThreshold) {
+            if (diffX < 0 && touchStartX > screenWidth - edgeThreshold) {
+                btn.classList.add('btn-visible');
+            } else if (diffX > 0 && btn.classList.contains('btn-visible') && !modal.classList.contains('show')) {
+                btn.classList.remove('btn-visible');
+            }
+        }
+    }, { passive: true });
 
     btn.addEventListener('click', function() { 
         modal.classList.toggle('show'); 

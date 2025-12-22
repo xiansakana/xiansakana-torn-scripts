@@ -193,6 +193,17 @@
                 max-width: 350px;
             }
         }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            #avgPriceToolBtn {
+                right: -30px;
+                transition: right 0.3s ease;
+            }
+            #avgPriceToolBtn.btn-visible { right: 0; }
+            #avgPriceToolBtn:hover { right: -30px; }
+            #avgPriceToolBtn.btn-visible:hover { right: 0; }
+        }
     `);
 
     // 创建按钮
@@ -201,6 +212,36 @@
     btn.innerHTML = '均价';
     btn.title = '物品购买均价计算器';
     document.body.appendChild(btn);
+
+    // 移动端滑动手势支持（左滑显示按钮，右滑隐藏按钮）
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var swipeThreshold = 50;
+    var edgeThreshold = 50;
+
+    document.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+        var touchEndX = e.changedTouches[0].screenX;
+        var touchEndY = e.changedTouches[0].screenY;
+        var diffX = touchEndX - touchStartX;
+        var diffY = Math.abs(touchEndY - touchStartY);
+        var screenWidth = window.innerWidth;
+
+        // 确保是水平滑动
+        if (Math.abs(diffX) > diffY && Math.abs(diffX) > swipeThreshold) {
+            if (diffX < 0 && touchStartX > screenWidth - edgeThreshold) {
+                // 从右边缘左滑，显示按钮
+                btn.classList.add('btn-visible');
+            } else if (diffX > 0 && btn.classList.contains('btn-visible') && !modal.classList.contains('show')) {
+                // 右滑且面板未打开，隐藏按钮
+                btn.classList.remove('btn-visible');
+            }
+        }
+    }, { passive: true });
 
     // 创建弹窗
     var modal = document.createElement('div');
