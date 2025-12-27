@@ -1,0 +1,97 @@
+{
+    "user_id": 2754627,
+    "user_name": "xiansakana",
+    "timestamp": 1766846768,
+    "categories": [],
+    "types": [
+        "4430",
+        "4440",
+        "4446"
+    ],
+    "logs": [
+        {
+            "log": 4430,
+            "title": "Trade completed",
+            "timestamp": 1766723339,
+            "category": "Trades",
+            "data": {
+                "user": 2600962,
+                "trade_id": "[<a href = \"/trade.php#step=view&ID=11212238\"target = \"_self\">view</a>]",
+                "parsed_trade_id": 11212238
+            },
+            "params": {
+                "italic": 1,
+                "color": "green"
+            }
+        },
+        {
+            "log": 4430,
+            "title": "Trade completed",
+            "timestamp": 1766709643,
+            "category": "Trades",
+            "data": {
+                "user": 2866795,
+                "trade_id": "[<a href = \"/trade.php#step=view&ID=11211496\"target = \"_self\">view</a>]",
+                "parsed_trade_id": 11211496
+            },
+            "params": {
+                "italic": 1,
+                "color": "green"
+            }
+        },
+        {
+            "log": 4440,
+            "title": "Trade money outgoing",
+            "timestamp": 1766709643,
+            "category": "Trades",
+            "data": {
+                "user": 2866795,
+                "trade_id": "[<a href = \"/trade.php#step=view&ID=11211496\"target = \"_self\">view</a>]",
+                "parsed_trade_id": 11211496,
+                "money": 284000000
+            },
+            "params": {}
+        },
+        {
+            "log": 4446,
+            "title": "Trade items incoming",
+            "timestamp": 1766709643,
+            "category": "Trades",
+            "data": {
+                "user": 2866795,
+                "trade_id": "[<a href = \"/trade.php#step=view&ID=11211496\"target = \"_self\">view</a>]",
+                "parsed_trade_id": 11211496,
+                "items": [
+                    {
+                        "id": 561,
+                        "uid": null,
+                        "qty": 2
+                    },
+                    {
+                        "id": 396,
+                        "uid": null,
+                        "qty": 28
+                    },
+                    {
+                        "id": 1040,
+                        "uid": null,
+                        "qty": 4
+                    },
+                    {
+                        "id": 366,
+                        "uid": null,
+                        "qty": 3
+                    },
+                    {
+                        "id": 865,
+                        "uid": null,
+                        "qty": 2
+                    }
+                ]
+            },
+            "params": {
+                "italic": 1
+            }
+        }
+    ]
+}

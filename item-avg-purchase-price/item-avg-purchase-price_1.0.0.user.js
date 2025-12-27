@@ -500,22 +500,22 @@
         var trades = [];
         var groups = groupTradeLogs(logs);
 
-        // 收集所有需要查询价格的其他物品ID
-        var otherItemIds = new Set();
+        // 收集所有需要查询价格的物品ID（包括目标物品和其他物品）
+        var allItemIds = new Set();
         Object.values(groups).forEach(function(trade) {
             if (!trade.items || !trade.money) return;
             var hasTarget = trade.items.some(function(i) { return i.id === targetId; });
             if (!hasTarget) return;
             trade.items.forEach(function(i) {
-                if (i.id !== targetId) otherItemIds.add(i.id);
+                allItemIds.add(i.id);
             });
         });
 
-        // 批量获取其他物品的市场均价
+        // 批量获取所有物品的市场均价
         var marketPrices = {};
-        if (otherItemIds.size > 0) {
-            infoEl.textContent = '正在获取其他物品市场价格...';
-            marketPrices = await fetchItemMarketPrices(apiKey, Array.from(otherItemIds));
+        if (allItemIds.size > 0) {
+            infoEl.textContent = '正在获取物品市场价格...';
+            marketPrices = await fetchItemMarketPrices(apiKey, Array.from(allItemIds));
         }
 
         Object.entries(groups).forEach(function(e) {
@@ -528,6 +528,7 @@
             var otherItems = trade.items.filter(function(i) { return i.id !== targetId; });
 
             var cost;
+            var useMarketPrice = false;
             if (otherItems.length === 0) {
                 // 只有目标物品，直接用总金额
                 cost = trade.money;
@@ -538,13 +539,22 @@
                     return s + (price * i.qty);
                 }, 0);
                 // 目标物品成本 = 总金额 - 其他物品市场价值
-                cost = Math.max(0, trade.money - otherValue);
+                var calculatedCost = trade.money - otherValue;
+                
+                if (calculatedCost <= 0) {
+                    // 如果其他物品市场价值超过总金额，则用目标物品的市场价计算
+                    var targetMarketPrice = marketPrices[targetId] || 0;
+                    cost = targetMarketPrice * totalQty;
+                    useMarketPrice = true;
+                } else {
+                    cost = calculatedCost;
+                }
             }
 
             trades.push({
                 id: tradeId, type: 'trade', typeName: 'Trade', timestamp: trade.timestamp,
                 qty: totalQty, costEach: Math.round(cost / totalQty), costTotal: cost, seller: trade.user,
-                hasOtherItems: otherItems.length > 0
+                hasOtherItems: otherItems.length > 0, useMarketPrice: useMarketPrice
             });
         });
         return trades;
@@ -572,7 +582,14 @@
         purchases.forEach(function(p) {
             var div = document.createElement('div');
             div.className = 'apt-purchase-item ' + p.type;
-            var extraInfo = p.hasOtherItems ? ' <span style="color:#ffc107;">(含其他物品，其他物品按市场价估算)</span>' : '';
+            var extraInfo = '';
+            if (p.hasOtherItems) {
+                if (p.useMarketPrice) {
+                    extraInfo = ' <span style="color:#ff6b6b;">(含其他物品，按目标物品市场价估算)</span>';
+                } else {
+                    extraInfo = ' <span style="color:#ffc107;">(含其他物品，其他物品按市场价估算)</span>';
+                }
+            }
             div.innerHTML = '<h4>' + p.typeName + ' - ' + formatTime(p.timestamp) + extraInfo + '</h4>' +
                 '<p>数量：' + p.qty + ' | 单价：' + formatMoney(p.costEach) + ' | 总价：' + formatMoney(p.costTotal) + '</p>' +
                 '<p>卖家ID：' + (p.seller || '匿名') + '</p>';
