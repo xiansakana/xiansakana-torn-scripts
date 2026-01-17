@@ -1,0 +1,30 @@
+# fly.toml app configuration file
+# 
+# 使用方法：
+# 1. flyctl launch (首次创建应用)
+# 2. flyctl secrets set ... (设置环境变量)
+# 3. flyctl deploy (部署)
+
+app = 'company-monitor'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+  CHECK_INTERVAL = '60'
+
+[processes]
+  app = 'node company-monitor-daemon.js'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+  memory_mb = 256

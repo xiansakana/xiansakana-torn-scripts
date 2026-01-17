@@ -63,29 +63,26 @@ npm start
 
 ### 使用 Fly.io（免费）
 
-1. **安装 flyctl**
-   
-   Windows:
-   ```powershell
-   powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
-   ```
+**完整部署指南请查看：[FLY_DEPLOY.md](FLY_DEPLOY.md)**
 
-2. **登录**
+**快速步骤：**
+
+1. **安装并登录**
    ```bash
+   # Windows
+   powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+   
+   # 登录
    flyctl auth login
    ```
 
-3. **创建应用**
+2. **创建应用**
    ```bash
    cd company-monitor
    flyctl launch
    ```
-   
-   - App name: `company-monitor`（或其他名字）
-   - Region: 选择 `San Jose (sjc)`
-   - 不要部署数据库
 
-4. **设置环境变量**
+3. **设置环境变量**
    ```bash
    flyctl secrets set TORN_API_KEYS=key1,key2,key3
    flyctl secrets set EMAIL_ENABLED=true
@@ -96,15 +93,17 @@ npm start
    flyctl secrets set EMAIL_FROM=2461298052@qq.com
    ```
 
-5. **部署**
+4. **部署**
    ```bash
    flyctl deploy
    ```
 
-6. **查看日志**
+5. **查看日志**
    ```bash
    flyctl logs
    ```
+
+详细说明、故障排除、常用命令等请查看 [FLY_DEPLOY.md](FLY_DEPLOY.md)
 
 ---
 
