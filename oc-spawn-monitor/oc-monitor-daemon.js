@@ -97,9 +97,61 @@ class OCMonitor {
         
         // 初始化邮件发送器
         if (config.email.enabled && config.email.auth.user && config.email.auth.pass) {
-            this.emailTransporter = nodemailer.createTransport({
-                service: config.email.service,
-                auth: config.email.auth
+            console.log('初始化邮件发送器...');
+            console.log(`  服务: ${config.email.service}`);
+            console.log(`  用户: ${config.email.auth.user}`);
+            console.log(`  密码长度: ${config.email.auth.pass.length} 字符`);
+            
+            // 根据不同邮件服务使用不同配置
+            let transportConfig;
+            
+            if (config.email.service === 'gmail') {
+                // Gmail 使用显式 SMTP 配置
+                transportConfig = {
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    secure: false, // 使用 STARTTLS
+                    auth: config.email.auth,
+                    tls: {
+                        ciphers: 'SSLv3',
+                        rejectUnauthorized: false
+                    }
+                };
+            } else if (config.email.service === 'qq') {
+                transportConfig = {
+                    host: 'smtp.qq.com',
+                    port: 465,
+                    secure: true,
+                    auth: config.email.auth,
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                };
+            } else if (config.email.service === '163') {
+                transportConfig = {
+                    host: 'smtp.163.com',
+                    port: 465,
+                    secure: true,
+                    auth: config.email.auth
+                };
+            } else {
+                // 其他服务使用默认配置
+                transportConfig = {
+                    service: config.email.service,
+                    auth: config.email.auth
+                };
+            }
+            
+            this.emailTransporter = nodemailer.createTransport(transportConfig);
+            
+            // 验证邮件配置（异步，不阻塞启动）
+            this.emailTransporter.verify((error, success) => {
+                if (error) {
+                    console.error('❌ 邮件配置验证失败：', error.message);
+                    console.error('   这可能不影响实际发送，将在发送时重试');
+                } else {
+                    console.log('✓ 邮件配置验证成功');
+                }
             });
         }
         
@@ -225,10 +277,26 @@ class OCMonitor {
         };
         
         try {
-            await this.emailTransporter.sendMail(mailOptions);
+            console.log(`正在发送邮件到 ${this.config.email.to}...`);
+            console.log(`使用邮箱服务: ${this.config.email.service}`);
+            console.log(`发件人: ${this.config.email.from}`);
+            
+            // 添加 30 秒超时
+            const sendPromise = this.emailTransporter.sendMail(mailOptions);
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('邮件发送超时（30秒）')), 30000)
+            );
+            
+            await Promise.race([sendPromise, timeoutPromise]);
             console.log(`✉️  邮件通知已发送到 ${this.config.email.to}`);
         } catch (err) {
-            console.error('发送邮件失败：', err.message);
+            console.error('❌ 发送邮件失败：', err.message);
+            console.error('错误详情：', err);
+            console.error('请检查：');
+            console.error('  1. Gmail 应用专用密码是否正确（16位，无空格）');
+            console.error('  2. Gmail 账号是否开启了"两步验证"和"应用专用密码"');
+            console.error('  3. 网络连接是否正常');
+            console.error('  4. 尝试使用其他邮箱服务（如 QQ、163）');
         }
     }
     
