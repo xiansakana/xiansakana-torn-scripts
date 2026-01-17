@@ -94,7 +94,7 @@ cp config.example.json config.json
 
 ## 🔄 配置同步
 
-### 场景 1：本地和 Railway 使用相同配置
+### 场景 1：本地和 Render 使用相同配置
 
 **本地：**
 ```bash
@@ -102,10 +102,10 @@ cp config.example.json config.json
 node oc-monitor-daemon.js
 ```
 
-**Railway：**
-在 Variables 标签复制 `.env` 文件的内容
+**Render：**
+在 Environment 标签复制 `.env` 文件的内容
 
-### 场景 2：本地使用 config.json，Railway 使用环境变量
+### 场景 2：本地使用 config.json，Render 使用环境变量
 
 **本地：**
 ```bash
@@ -113,8 +113,8 @@ node oc-monitor-daemon.js
 node oc-monitor-daemon.js
 ```
 
-**Railway：**
-在 Variables 标签配置环境变量
+**Render：**
+在 Environment 标签配置环境变量
 
 ---
 
@@ -173,14 +173,14 @@ cp config.example.json config.json
 node oc-monitor-daemon.js
 ```
 
-### Railway 部署
+### Render 部署
 
 ```bash
 # 1. 推送到 GitHub
 git push
 
-# 2. 在 Railway 配置环境变量
-# 参考 .env.example 或 RAILWAY_DEPLOY.md
+# 2. 在 Render 配置环境变量
+# 参考 .env.example 或 RENDER_DEPLOY.md
 
 # 3. 部署完成！
 ```
@@ -220,6 +220,6 @@ git push
 
 ## 📚 相关文档
 
-- [快速开始](./QUICK_START.md) - 3分钟部署
-- [Railway 部署](./RAILWAY_DEPLOY.md) - 完整部署指南
+- [快速开始](./RENDER_QUICK_START.md) - 3分钟部署到 Render
+- [Render 部署](./RENDER_DEPLOY.md) - 完整部署指南
 - [主文档](./README.md) - 项目说明

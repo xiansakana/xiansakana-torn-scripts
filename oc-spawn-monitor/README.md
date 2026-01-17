@@ -23,17 +23,17 @@
 
 ## 方案二：独立守护进程（推荐）
 
-### 快速部署到 Railway（推荐）⭐
+### 快速部署到 Render（推荐）⭐
 
-**3 分钟完成部署，24/7 运行，邮件通知！**
+**完全免费！无需信用卡！3 分钟完成部署，24/7 运行，邮件通知！**
 
-1. 推送代码到 GitHub
-2. 在 Railway.app 创建项目并连接仓库
+1. 注册 Render.com（用 GitHub 登录）
+2. 创建 Background Worker 并连接仓库
 3. 配置环境变量（API Key、邮箱等）
 4. 完成！
 
-👉 **详细步骤：[QUICK_START.md](./QUICK_START.md)**
-👉 **完整指南：[RAILWAY_DEPLOY.md](./RAILWAY_DEPLOY.md)**
+👉 **快速开始：[RENDER_QUICK_START.md](./RENDER_QUICK_START.md)**
+👉 **完整指南：[RENDER_DEPLOY.md](./RENDER_DEPLOY.md)**
 
 ### 本地运行
 
@@ -189,80 +189,21 @@ npm start
 
 ## 部署方式
 
-### 1. 本地运行
+### 1. Render 部署（推荐）⭐
+
+**完全免费，无需信用卡**
+
+在 Render.com 上持续运行，详见 [RENDER_DEPLOY.md](./RENDER_DEPLOY.md)
+
+### 2. 本地运行
+
 直接在电脑上运行，需要保持电脑开机
 
-### 2. 服务器部署（推荐）
-在 VPS 或云服务器上持续运行
+### 3. 其他云平台
 
-#### 使用 PM2 管理进程
-```bash
-# 安装 PM2
-npm install -g pm2
-
-# 启动监控
-pm2 start oc-monitor-daemon.js --name oc-monitor
-
-# 查看状态
-pm2 status
-
-# 查看日志
-pm2 logs oc-monitor
-
-# 停止
-pm2 stop oc-monitor
-
-# 开机自启
-pm2 startup
-pm2 save
-```
-
-#### 使用 systemd (Linux)
-创建 `/etc/systemd/system/oc-monitor.service`：
-```ini
-[Unit]
-Description=Torn OC Spawn Monitor
-After=network.target
-
-[Service]
-Type=simple
-User=your-username
-WorkingDirectory=/path/to/oc-spawn-monitor
-ExecStart=/usr/bin/node oc-monitor-daemon.js
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启动服务：
-```bash
-sudo systemctl enable oc-monitor
-sudo systemctl start oc-monitor
-sudo systemctl status oc-monitor
-```
-
-### 3. Docker 部署
-创建 `Dockerfile`：
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-CMD ["node", "oc-monitor-daemon.js"]
-```
-
-运行：
-```bash
-docker build -t oc-monitor .
-docker run -d --name oc-monitor --restart always oc-monitor
-```
-
-### 4. 免费云平台
-- **Render.com** - 免费套餐支持后台服务
+- **Fly.io** - 有限免费额度
 - **Railway.app** - 每月 $5 免费额度
-- **Fly.io** - 免费套餐
+- **VPS** - 自己的服务器
 
 ---
 
