@@ -94,7 +94,7 @@ cp config.example.json config.json
 
 ## 🔄 配置同步
 
-### 场景 1：本地和 Render 使用相同配置
+### 场景 1：本地和 Fly.io 使用相同配置
 
 **本地：**
 ```bash
@@ -102,10 +102,10 @@ cp config.example.json config.json
 node oc-monitor-daemon.js
 ```
 
-**Render：**
-在 Environment 标签复制 `.env` 文件的内容
+**Fly.io：**
+使用 `flyctl secrets set` 配置环境变量
 
-### 场景 2：本地使用 config.json，Render 使用环境变量
+### 场景 2：本地使用 config.json，Fly.io 使用 secrets
 
 **本地：**
 ```bash
@@ -113,8 +113,8 @@ node oc-monitor-daemon.js
 node oc-monitor-daemon.js
 ```
 
-**Render：**
-在 Environment 标签配置环境变量
+**Fly.io：**
+使用 `flyctl secrets set` 配置环境变量
 
 ---
 
@@ -173,16 +173,21 @@ cp config.example.json config.json
 node oc-monitor-daemon.js
 ```
 
-### Render 部署
+### Fly.io 部署
 
 ```bash
-# 1. 推送到 GitHub
-git push
+# 1. 进入目录
+cd oc-spawn-monitor
 
-# 2. 在 Render 配置环境变量
-# 参考 .env.example 或 RENDER_DEPLOY.md
+# 2. 创建应用
+flyctl launch
 
-# 3. 部署完成！
+# 3. 配置环境变量
+flyctl secrets set TORN_API_KEY=你的密钥
+# ... 其他环境变量
+
+# 4. 部署
+flyctl deploy
 ```
 
 ---
@@ -220,6 +225,6 @@ git push
 
 ## 📚 相关文档
 
-- [快速开始](./RENDER_QUICK_START.md) - 3分钟部署到 Render
-- [Render 部署](./RENDER_DEPLOY.md) - 完整部署指南
+- [快速开始](./FLY_QUICK_START.md) - 5分钟部署到 Fly.io
+- [Fly.io 部署](./FLY_DEPLOY.md) - 完整部署指南
 - [主文档](./README.md) - 项目说明

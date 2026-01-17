@@ -23,17 +23,18 @@
 
 ## 方案二：独立守护进程（推荐）
 
-### 快速部署到 Render（推荐）⭐
+### 快速部署到 Fly.io（推荐）⭐
 
-**完全免费！无需信用卡！3 分钟完成部署，24/7 运行，邮件通知！**
+**完全免费！5 分钟完成部署，24/7 运行，邮件通知！**
 
-1. 注册 Render.com（用 GitHub 登录）
-2. 创建 Background Worker 并连接仓库
-3. 配置环境变量（API Key、邮箱等）
-4. 完成！
+1. 安装 flyctl 命令行工具
+2. 登录 Fly.io（用 GitHub 账号）
+3. 运行 `flyctl launch` 创建应用
+4. 配置环境变量（API Key、邮箱等）
+5. 运行 `flyctl deploy` 部署
 
-👉 **快速开始：[RENDER_QUICK_START.md](./RENDER_QUICK_START.md)**
-👉 **完整指南：[RENDER_DEPLOY.md](./RENDER_DEPLOY.md)**
+👉 **快速开始：[FLY_QUICK_START.md](./FLY_QUICK_START.md)**
+👉 **完整指南：[FLY_DEPLOY.md](./FLY_DEPLOY.md)**
 
 ### 本地运行
 
@@ -189,11 +190,11 @@ npm start
 
 ## 部署方式
 
-### 1. Render 部署（推荐）⭐
+### 1. Fly.io 部署（推荐）⭐
 
-**完全免费，无需信用卡**
+**完全免费，3个免费 VM**
 
-在 Render.com 上持续运行，详见 [RENDER_DEPLOY.md](./RENDER_DEPLOY.md)
+在 Fly.io 上持续运行，详见 [FLY_DEPLOY.md](./FLY_DEPLOY.md)
 
 ### 2. 本地运行
 
@@ -201,8 +202,8 @@ npm start
 
 ### 3. 其他云平台
 
-- **Fly.io** - 有限免费额度
-- **Railway.app** - 每月 $5 免费额度
+- **Railway.app** - 每月 $5 免费额度（需信用卡）
+- **Render.com** - 付费套餐 $7/月起
 - **VPS** - 自己的服务器
 
 ---
