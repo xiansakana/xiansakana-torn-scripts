@@ -1,20 +1,30 @@
-# fly.toml app configuration file
+# fly.toml app configuration file generated for oc-spawn-monitor on 2026-01-17T18:27:30+08:00
+#
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "oc-spawn-monitor"
-primary_region = "sjc"
+app = 'oc-spawn-monitor'
+primary_region = 'sjc'
 
 [build]
 
 [env]
-  CHECK_INTERVAL = "60"
-  FILTER_MIN_DIFFICULTY = "simple"
-  FILTER_MIN_SCOPE = "1"
+  CHECK_INTERVAL = '60'
+  FILTER_MIN_DIFFICULTY = 'simple'
+  FILTER_MIN_SCOPE = '1'
 
 [processes]
-  app = "node oc-monitor-daemon.js"
+  app = 'node oc-monitor-daemon.js'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '256mb'
   cpus = 1
   memory_mb = 256
