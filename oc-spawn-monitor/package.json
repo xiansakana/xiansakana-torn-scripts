@@ -1,0 +1,23 @@
+{
+  "name": "torn-oc-spawn-monitor",
+  "version": "1.0.0",
+  "description": "Torn OC Spawn 监控守护进程 - 支持邮件和 Webhook 通知",
+  "main": "oc-monitor-daemon.js",
+  "scripts": {
+    "start": "node oc-monitor-daemon.js",
+    "test": "node oc-monitor-daemon.js"
+  },
+  "keywords": [
+    "torn",
+    "oc",
+    "monitor",
+    "notification"
+  ],
+  "author": "xiansakana[2754627]",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "node-fetch": "^2.6.7",
+    "nodemailer": "^6.9.0"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "tornApiKey": "YOUR_API_KEY_HERE",
+  "checkInterval": 60,
+  "email": {
+    "enabled": true,
+    "service": "gmail",
+    "auth": {
+      "user": "your-email@gmail.com",
+      "pass": "your-app-password"
+    },
+    "to": "recipient@example.com",
+    "from": "your-email@gmail.com"
+  },
+  "webhook": {
+    "enabled": false,
+    "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+  },
+  "filters": {
+    "minDifficulty": "simple",
+    "minScope": 1,
+    "players": []
+  }
+}
