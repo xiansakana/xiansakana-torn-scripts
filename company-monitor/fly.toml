@@ -15,12 +15,24 @@ primary_region = 'sjc'
   app = 'node company-monitor-daemon.js'
 
 [http_service]
-  internal_port = 3000
+  internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = 'off'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "get"
+    path = "/health"
+
+# 持久化存储卷配置
+[mounts]
+  source = "company_monitor_data"
+  destination = "/data"
 
 [[vm]]
   memory = '256mb'

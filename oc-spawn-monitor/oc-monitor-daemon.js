@@ -16,10 +16,15 @@ const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const ConfigManager = require('./config-manager');
 
 // 配置文件路径
 const CONFIG_FILE = path.join(__dirname, 'config.json');
-const STATE_FILE = path.join(__dirname, 'oc-monitor-state.json');
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const STATE_FILE = fs.existsSync(DATA_DIR) 
+    ? path.join(DATA_DIR, 'oc-monitor-state.json')
+    : path.join(__dirname, 'oc-monitor-state.json');
 
 // 从环境变量或配置文件加载配置
 function loadConfig() {
@@ -42,11 +47,6 @@ function loadConfig() {
             webhook: {
                 enabled: process.env.WEBHOOK_ENABLED === 'true',
                 url: process.env.WEBHOOK_URL
-            },
-            gocqhttp: {
-                enabled: process.env.GOCQ_ENABLED === 'true',
-                apiUrl: process.env.GOCQ_API_URL || 'http://localhost:5700',
-                groupId: process.env.GOCQ_GROUP_ID
             },
             filters: {
                 minDifficulty: process.env.FILTER_MIN_DIFFICULTY || 'simple',
@@ -84,11 +84,6 @@ const DEFAULT_CONFIG = {
         enabled: false,
         url: 'https://discord.com/api/webhooks/...'
     },
-    gocqhttp: {
-        enabled: false,
-        apiUrl: 'http://localhost:5700',
-        groupId: 'your_qq_group_id'
-    },
     filters: {
         minDifficulty: 'simple',
         minScope: 1,
@@ -104,6 +99,8 @@ class OCMonitor {
         this.totalNewOCs = 0;
         this.isRunning = false;
         this.timer = null;
+        this.recentOCs = []; // 存储最近的 OC 列表
+        this.maxRecentOCs = 50; // 最多保存 50 个
         
         // 初始化邮件发送器
         if (config.email.enabled && config.email.auth.user && config.email.auth.pass) {
@@ -335,47 +332,6 @@ class OCMonitor {
         }
     }
     
-    async sendQQGroupMessage(ocs) {
-        if (!this.config.gocqhttp.enabled || !this.config.gocqhttp.groupId) {
-            return;
-        }
-        
-        let message = `🎯 发现 ${ocs.length} 个新 OC Spawn！\n\n`;
-        
-        ocs.forEach(oc => {
-            const timeStr = new Date(oc.timestamp * 1000).toLocaleString('zh-CN');
-            message += `━━━━━━━━━━━━━━━━\n`;
-            message += `📋 ${oc.crimeName}\n`;
-            message += `🎚️ 难度：${oc.difficulty}\n`;
-            message += `📊 Scope：${oc.scopeCount}\n`;
-            message += `👤 发起人：${oc.player}\n`;
-            message += `🕐 时间：${timeStr}\n`;
-        });
-        
-        message += `━━━━━━━━━━━━━━━━\n`;
-        message += `检查时间：${new Date().toLocaleString('zh-CN')}`;
-        
-        try {
-            const response = await fetch(`${this.config.gocqhttp.apiUrl}/send_group_msg`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    group_id: parseInt(this.config.gocqhttp.groupId),
-                    message: message
-                })
-            });
-            
-            const result = await response.json();
-            if (result.status === 'ok') {
-                console.log('✓ QQ群消息已发送');
-            } else {
-                console.error('❌ QQ群消息发送失败：', result.msg || result.wording);
-            }
-        } catch (err) {
-            console.error('❌ QQ群消息发送失败：', err.message);
-        }
-    }
-    
     async check() {
         try {
             this.checkCount++;
@@ -392,6 +348,12 @@ class OCMonitor {
                         this.totalNewOCs++;
                         newOCs.push(ocInfo);
                         
+                        // 添加到最近 OC 列表
+                        this.recentOCs.unshift(ocInfo);
+                        if (this.recentOCs.length > this.maxRecentOCs) {
+                            this.recentOCs.pop();
+                        }
+                        
                         console.log(`  ✓ 新 OC: ${ocInfo.crimeName} (${ocInfo.difficulty}) - ${ocInfo.player}`);
                     }
                 }
@@ -403,7 +365,6 @@ class OCMonitor {
                 // 发送通知
                 await this.sendEmailNotification(newOCs);
                 await this.sendWebhookNotification(newOCs);
-                await this.sendQQGroupMessage(newOCs);
                 
                 // 保存状态
                 this.saveState();
@@ -431,7 +392,6 @@ class OCMonitor {
         console.log(`检查间隔：${this.config.checkInterval} 秒`);
         console.log(`邮件通知：${this.config.email.enabled ? '✓ 启用' : '✗ 禁用'}`);
         console.log(`Webhook：${this.config.webhook.enabled ? '✓ 启用' : '✗ 禁用'}`);
-        console.log(`QQ群通知：${this.config.gocqhttp.enabled ? '✓ 启用' : '✗ 禁用'}`);
         console.log(`过滤条件：难度 >= ${this.config.filters.minDifficulty}, Scope >= ${this.config.filters.minScope}`);
         console.log('='.repeat(60));
         
@@ -491,6 +451,227 @@ function main() {
         process.exit(1);
     }
     
+    // 初始化配置管理器
+    const configManager = new ConfigManager();
+    console.log('✓ 配置管理器已初始化');
+    console.log('  每个用户都有独立的配置');
+    
+    // 创建 Web 管理面板 HTTP 服务器
+    const PORT = process.env.PORT || 8080;
+    
+    // 简单的认证中间件
+    function checkAuth(req) {
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) return false;
+        
+        const token = authHeader.replace('Bearer ', '');
+        // 任何非空的 token 都允许（实际验证在登录时完成）
+        return token && token.length > 0;
+    }
+    
+    // 解析 POST 请求体
+    function parseBody(req) {
+        return new Promise((resolve, reject) => {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch (e) {
+                    resolve({});
+                }
+            });
+            req.on('error', reject);
+        });
+    }
+    
+    const server = http.createServer(async (req, res) => {
+        // 设置 CORS 头
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+        }
+        
+        // 健康检查端点（无需认证）
+        if (req.url === '/health') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'ok',
+                service: 'oc-spawn-monitor',
+                uptime: process.uptime(),
+                checks: monitor ? monitor.checkCount : 0,
+                newOCs: monitor ? monitor.totalNewOCs : 0
+            }));
+        }
+        // 登录端点
+        else if (req.url === '/api/login' && req.method === 'POST') {
+            const body = await parseBody(req);
+            
+            // 验证 API Key 是否有效（通过 Torn API）
+            try {
+                const response = await fetch(`https://api.torn.com/user/?selections=basic&key=${body.apiKey}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    res.writeHead(401, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: false,
+                        message: 'API Key 无效或已过期'
+                    }));
+                } else {
+                    // API Key 有效，允许登录
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: true,
+                        token: body.apiKey,
+                        message: '登录成功',
+                        userName: data.name,
+                        userId: data.player_id
+                    }));
+                }
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: false,
+                    message: '验证失败，请检查网络连接'
+                }));
+            }
+        }
+        // 更新配置（需要认证）
+        else if (req.url === '/api/config' && req.method === 'POST') {
+            if (!checkAuth(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: '未授权' }));
+                return;
+            }
+            
+            const body = await parseBody(req);
+            
+            // 获取当前用户的 API Key
+            const authHeader = req.headers['authorization'];
+            const currentApiKey = authHeader.replace('Bearer ', '');
+            
+            // 更新用户配置
+            const success = configManager.updateUserConfig(currentApiKey, {
+                checkInterval: body.checkInterval,
+                emailEnabled: body.emailEnabled,
+                emailTo: body.emailTo,
+                minDifficulty: body.minDifficulty,
+                minScope: body.minScope
+            });
+            
+            if (success) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    message: '✓ 配置已保存'
+                }));
+            } else {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: false,
+                    message: '保存配置失败'
+                }));
+            }
+        }
+        // 重置配置（需要认证）
+        else if (req.url === '/api/config/reset' && req.method === 'POST') {
+            if (!checkAuth(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: '未授权' }));
+                return;
+            }
+            
+            const authHeader = req.headers['authorization'];
+            const currentApiKey = authHeader.replace('Bearer ', '');
+            
+            const success = configManager.deleteUserConfig(currentApiKey);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: success,
+                message: success ? '✓ 已重置为默认配置' : '没有找到配置文件'
+            }));
+        }
+        // API 状态端点（需要认证）
+        else if (req.url === '/api/status') {
+            if (!checkAuth(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: '未授权' }));
+                return;
+            }
+            
+            // 获取当前用户的 API Key
+            const authHeader = req.headers['authorization'];
+            const currentApiKey = authHeader.replace('Bearer ', '');
+            
+            // 获取用户配置
+            const userConfig = configManager.getUserConfig(currentApiKey);
+            const hasConfig = configManager.hasUserConfig(currentApiKey);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'ok',
+                service: 'oc-spawn-monitor',
+                uptime: process.uptime(),
+                checks: monitor ? monitor.checkCount : 0,
+                newOCs: monitor ? monitor.totalNewOCs : 0,
+                config: {
+                    apiKey: config.tornApiKey,
+                    interval: userConfig.checkInterval,
+                    emailEnabled: userConfig.email.enabled,
+                    emailService: config.email.service,
+                    emailUser: config.email.auth.user,
+                    emailTo: userConfig.email.to,
+                    minDifficulty: userConfig.filters.minDifficulty,
+                    minScope: userConfig.filters.minScope,
+                    hasConfig: hasConfig
+                }
+            }));
+        }
+        // 获取最近的 OC 列表（需要认证）
+        else if (req.url === '/api/recent-ocs') {
+            if (!checkAuth(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: '未授权' }));
+                return;
+            }
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                ocs: monitor ? monitor.recentOCs : [],
+                total: monitor ? monitor.totalNewOCs : 0
+            }));
+        }
+        // 主页
+        else if (req.url === '/' || req.url === '/index.html') {
+            fs.readFile(path.join(__dirname, 'public', 'index.html'), 'utf8', (err, data) => {
+                if (err) {
+                    res.writeHead(404);
+                    res.end('Not Found');
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(data);
+                }
+            });
+        }
+        // 其他路径返回 404
+        else {
+            res.writeHead(404);
+            res.end('Not Found');
+        }
+    });
+    
+    server.listen(PORT, () => {
+        console.log(`✓ Web 管理面板运行在端口 ${PORT}`);
+        console.log(`  访问地址: http://localhost:${PORT}`);
+    });
+    
     // 创建并启动监控
     const monitor = new OCMonitor(config);
     monitor.start();
@@ -499,11 +680,13 @@ function main() {
     process.on('SIGINT', () => {
         console.log('\n\n收到退出信号...');
         monitor.stop();
+        server.close();
         process.exit(0);
     });
     
     process.on('SIGTERM', () => {
         monitor.stop();
+        server.close();
         process.exit(0);
     });
 }
