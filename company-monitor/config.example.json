@@ -1,8 +1,8 @@
 {
   "tornApiKeys": [
-    "YOUR_API_KEY_1",
-    "YOUR_API_KEY_2",
-    "YOUR_API_KEY_3"
+    { "key": "YOUR_API_KEY_1", "name": "公司名称1" },
+    { "key": "YOUR_API_KEY_2", "name": "公司名称2" },
+    { "key": "YOUR_API_KEY_3", "name": "公司名称3" }
   ],
   "checkInterval": 60,
   "email": {

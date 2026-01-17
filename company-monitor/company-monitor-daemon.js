@@ -26,8 +26,22 @@ function loadConfig() {
     // 优先使用环境变量
     if (process.env.TORN_API_KEYS) {
         console.log('使用环境变量配置');
+        
+        // 解析 API Keys 和对应的公司名称
+        const apiKeysStr = process.env.TORN_API_KEYS;
+        const apiNamesStr = process.env.TORN_API_NAMES || '';
+        
+        const apiKeys = apiKeysStr.split(',').map(k => k.trim());
+        const apiNames = apiNamesStr.split(',').map(n => n.trim());
+        
+        // 构建 API Key 配置数组
+        const tornApiKeys = apiKeys.map((key, index) => ({
+            key: key,
+            name: apiNames[index] || `公司 ${index + 1}`
+        }));
+        
         return {
-            tornApiKeys: process.env.TORN_API_KEYS.split(',').map(k => k.trim()),
+            tornApiKeys: tornApiKeys,
             checkInterval: parseInt(process.env.CHECK_INTERVAL) || 60,
             email: {
                 enabled: process.env.EMAIL_ENABLED === 'true',
@@ -57,7 +71,10 @@ function loadConfig() {
 
 // 默认配置
 const DEFAULT_CONFIG = {
-    tornApiKeys: ['YOUR_API_KEY_1', 'YOUR_API_KEY_2'],
+    tornApiKeys: [
+        { key: 'YOUR_API_KEY_1', name: '公司名称1' },
+        { key: 'YOUR_API_KEY_2', name: '公司名称2' }
+    ],
     checkInterval: 60,
     email: {
         enabled: true,
@@ -183,7 +200,7 @@ class CompanyMonitor {
         
         let html = '<h2>Torn 公司申请通知</h2>';
         html += '<table border="1" cellpadding="10" cellspacing="0" style="border-collapse: collapse; font-family: Arial;">';
-        html += '<tr style="background: #f0f0f0;"><th>申请人</th><th>等级</th><th>智力</th><th>耐力</th><th>体力劳动</th><th>状态</th><th>过期时间</th></tr>';
+        html += '<tr style="background: #f0f0f0;"><th>公司</th><th>申请人</th><th>等级</th><th>智力</th><th>耐力</th><th>体力劳动</th><th>状态</th><th>过期时间</th></tr>';
         
         apps.forEach(app => {
             const expiresTime = new Date(app.data.expires * 1000).toLocaleString('zh-CN');
@@ -192,6 +209,7 @@ class CompanyMonitor {
             const manualLabor = app.data.stats?.manual_labor?.toLocaleString() || '未知';
             
             html += `<tr>
+                <td style="background: #e3f2fd; font-weight: bold;">${app.companyName}</td>
                 <td><strong>${app.data.name || '未知'}</strong> (ID: ${app.data.userID || '未知'})</td>
                 <td>${app.data.level || '未知'}</td>
                 <td>${intelligence}</td>
@@ -233,7 +251,7 @@ class CompanyMonitor {
         }
         
         const content = apps.map(app => {
-            return `**${app.data.name}** (Lv.${app.data.level}) - 智力: ${app.data.stats?.intelligence?.toLocaleString() || '?'}`;
+            return `**[${app.companyName}]** ${app.data.name} (Lv.${app.data.level}) - 智力: ${app.data.stats?.intelligence?.toLocaleString() || '?'}`;
         }).join('\n');
         
         const payload = {
@@ -261,8 +279,11 @@ class CompanyMonitor {
             
             // 遍历所有 API Key
             for (let i = 0; i < this.config.tornApiKeys.length; i++) {
-                const apiKey = this.config.tornApiKeys[i];
-                console.log(`  检查 API Key ${i + 1}/${this.config.tornApiKeys.length}...`);
+                const apiConfig = this.config.tornApiKeys[i];
+                const apiKey = typeof apiConfig === 'string' ? apiConfig : apiConfig.key;
+                const companyName = typeof apiConfig === 'string' ? `公司 ${i + 1}` : apiConfig.name;
+                
+                console.log(`  检查 ${companyName} (API Key ${i + 1}/${this.config.tornApiKeys.length})...`);
                 
                 try {
                     const applications = await this.fetchCompanyApplications(apiKey);
@@ -272,13 +293,17 @@ class CompanyMonitor {
                         if (!this.seenAppIds.has(appId)) {
                             this.seenAppIds.add(appId);
                             this.totalNewApps++;
-                            allNewApps.push({ id: appId, data: applications[appId] });
+                            allNewApps.push({ 
+                                id: appId, 
+                                data: applications[appId],
+                                companyName: companyName
+                            });
                             
-                            console.log(`    ✓ 新申请: ${applications[appId].name} (Lv.${applications[appId].level})`);
+                            console.log(`    ✓ [${companyName}] 新申请: ${applications[appId].name} (Lv.${applications[appId].level})`);
                         }
                     }
                 } catch (err) {
-                    console.error(`    ❌ API Key ${i + 1} 检查失败：${err.message}`);
+                    console.error(`    ❌ ${companyName} 检查失败：${err.message}`);
                 }
             }
             

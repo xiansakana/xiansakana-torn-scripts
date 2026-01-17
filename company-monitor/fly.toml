@@ -1,11 +1,9 @@
-# fly.toml app configuration file
-# 
-# 使用方法：
-# 1. flyctl launch (首次创建应用)
-# 2. flyctl secrets set ... (设置环境变量)
-# 3. flyctl deploy (部署)
+# fly.toml app configuration file generated for torn-company-monitor on 2026-01-17T19:19:21+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = 'company-monitor'
+app = 'torn-company-monitor'
 primary_region = 'sjc'
 
 [build]
