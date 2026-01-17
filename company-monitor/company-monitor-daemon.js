@@ -56,6 +56,11 @@ function loadConfig() {
             webhook: {
                 enabled: process.env.WEBHOOK_ENABLED === 'true',
                 url: process.env.WEBHOOK_URL
+            },
+            gocqhttp: {
+                enabled: process.env.GOCQ_ENABLED === 'true',
+                apiUrl: process.env.GOCQ_API_URL || 'http://localhost:5700',
+                groupId: process.env.GOCQ_GROUP_ID
             }
         };
     }
@@ -89,6 +94,11 @@ const DEFAULT_CONFIG = {
     webhook: {
         enabled: false,
         url: 'https://discord.com/api/webhooks/...'
+    },
+    gocqhttp: {
+        enabled: false,
+        apiUrl: 'http://localhost:5700',
+        groupId: 'your_qq_group_id'
     }
 };
 
@@ -270,6 +280,54 @@ class CompanyMonitor {
         }
     }
     
+    async sendQQGroupMessage(apps) {
+        if (!this.config.gocqhttp.enabled || !this.config.gocqhttp.groupId) {
+            return;
+        }
+        
+        let message = `🏢 发现 ${apps.length} 个新的公司申请！\n\n`;
+        
+        apps.forEach(app => {
+            const expiresTime = new Date(app.data.expires * 1000).toLocaleString('zh-CN');
+            const intelligence = app.data.stats?.intelligence?.toLocaleString() || '未知';
+            const endurance = app.data.stats?.endurance?.toLocaleString() || '未知';
+            const manualLabor = app.data.stats?.manual_labor?.toLocaleString() || '未知';
+            
+            message += `━━━━━━━━━━━━━━━━\n`;
+            message += `🏢 公司：${app.companyName}\n`;
+            message += `👤 申请人：${app.data.name || '未知'} (ID: ${app.data.userID || '未知'})\n`;
+            message += `📊 等级：${app.data.level || '未知'}\n`;
+            message += `🧠 智力：${intelligence}\n`;
+            message += `💪 耐力：${endurance}\n`;
+            message += `🔧 体力劳动：${manualLabor}\n`;
+            message += `📝 状态：${app.data.status || '未知'}\n`;
+            message += `⏰ 过期：${expiresTime}\n`;
+        });
+        
+        message += `━━━━━━━━━━━━━━━━\n`;
+        message += `检查时间：${new Date().toLocaleString('zh-CN')}`;
+        
+        try {
+            const response = await fetch(`${this.config.gocqhttp.apiUrl}/send_group_msg`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    group_id: parseInt(this.config.gocqhttp.groupId),
+                    message: message
+                })
+            });
+            
+            const result = await response.json();
+            if (result.status === 'ok') {
+                console.log('✓ QQ群消息已发送');
+            } else {
+                console.error('❌ QQ群消息发送失败：', result.msg || result.wording);
+            }
+        } catch (err) {
+            console.error('❌ QQ群消息发送失败：', err.message);
+        }
+    }
+    
     async check() {
         try {
             this.checkCount++;
@@ -313,6 +371,7 @@ class CompanyMonitor {
                 // 发送通知
                 await this.sendEmailNotification(allNewApps);
                 await this.sendWebhookNotification(allNewApps);
+                await this.sendQQGroupMessage(allNewApps);
                 
                 // 保存状态
                 this.saveState();
@@ -341,6 +400,7 @@ class CompanyMonitor {
         console.log(`检查间隔：${this.config.checkInterval} 秒`);
         console.log(`邮件通知：${this.config.email.enabled ? '✓ 启用' : '✗ 禁用'}`);
         console.log(`Webhook：${this.config.webhook.enabled ? '✓ 启用' : '✗ 禁用'}`);
+        console.log(`QQ群通知：${this.config.gocqhttp.enabled ? '✓ 启用' : '✗ 禁用'}`);
         console.log('='.repeat(60));
         
         // 立即执行一次检查
