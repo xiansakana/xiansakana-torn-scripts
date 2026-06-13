@@ -17,7 +17,7 @@
     GM_addStyle(`
         #companyMonitorBtn {
             position: fixed;
-            top: calc(50% + 180px);
+            top: calc(50% + 270px);
             right: -25px;
             transform: translateY(-50%);
             width: 30px;
