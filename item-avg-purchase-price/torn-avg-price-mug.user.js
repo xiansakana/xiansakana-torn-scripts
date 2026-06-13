@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 物品购买均价计算器 - Mug抵扣版
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.1.3
 // @description  计算购买物品成本，并扣除购买后5分钟内对同一卖家的mug金额
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
@@ -671,6 +671,7 @@
         mugs.forEach(function(mug) {
             var candidates = purchases.filter(function(p) {
                 var sellerId = toNumber(p.sellerId || p.seller);
+                if (!sellerId) return false;
 
                 return sellerId === mug.targetId &&
                     p.timestamp <= mug.timestamp &&
@@ -679,18 +680,42 @@
 
             if (candidates.length === 0) return;
 
+            // 同一卖家多笔购买时，按购买时间从旧到新分摊 mug，避免全部扣在最近一笔上
             candidates.sort(function(a, b) {
-                return b.timestamp - a.timestamp;
+                return a.timestamp - b.timestamp;
             });
 
-            var targetPurchase = candidates[0];
+            var remaining = mug.amount;
+            var lastCandidate = candidates[candidates.length - 1];
 
-            targetPurchase.mugOffset += mug.amount;
-            targetPurchase.adjustedCostTotal = targetPurchase.costTotal - targetPurchase.mugOffset;
-            targetPurchase.adjustedCostEach = targetPurchase.qty > 0
-                ? Math.round(targetPurchase.adjustedCostTotal / targetPurchase.qty)
-                : 0;
-            targetPurchase.matchedMugs.push(mug);
+            function applyMugToPurchase(targetPurchase, applyAmount) {
+                if (applyAmount <= 0) return;
+                targetPurchase.mugOffset += applyAmount;
+                targetPurchase.adjustedCostTotal = targetPurchase.costTotal - targetPurchase.mugOffset;
+                targetPurchase.adjustedCostEach = targetPurchase.qty > 0
+                    ? Math.round(targetPurchase.adjustedCostTotal / targetPurchase.qty)
+                    : 0;
+                targetPurchase.matchedMugs.push({
+                    id: mug.id,
+                    timestamp: mug.timestamp,
+                    targetId: mug.targetId,
+                    amount: applyAmount
+                });
+            }
+
+            candidates.forEach(function(targetPurchase) {
+                if (remaining <= 0) return;
+
+                var room = Math.max(0, targetPurchase.costTotal - targetPurchase.mugOffset);
+                var applyAmount = Math.min(remaining, room);
+                applyMugToPurchase(targetPurchase, applyAmount);
+                remaining -= applyAmount;
+            });
+
+            if (remaining > 0) {
+                applyMugToPurchase(lastCandidate, remaining);
+            }
+
             matchedMugCount++;
         });
 

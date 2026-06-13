@@ -322,8 +322,9 @@
                     <h3>出售统计</h3>
                     <div class="asp-summary-row"><span class="label">物品名称</span><span class="value" id="aspSumName">-</span></div>
                     <div class="asp-summary-row"><span class="label">总出售数量</span><span class="value" id="aspSumQty">0</span></div>
-                    <div class="asp-summary-row"><span class="label">总收入</span><span class="value" id="aspSumRevenue">$0</span></div>
-                    <div class="asp-summary-row"><span class="label">出售均价</span><span class="value asp-avg-price" id="aspSumAvg">$0</span></div>
+                    <div class="asp-summary-row"><span class="label">实际收入</span><span class="value" id="aspSumRevenue">$0</span></div>
+                    <div class="asp-summary-row"><span class="label">出售均价（税后）</span><span class="value asp-avg-price" id="aspSumAvg">$0</span></div>
+                    <div class="asp-summary-row"><span class="label">Market 税费</span><span class="value" id="aspSumFee">$0</span></div>
                     <div class="asp-summary-row"><span class="label">Bazaar</span><span class="value" id="aspSumBazaar">0 件</span></div>
                     <div class="asp-summary-row"><span class="label">Item Market</span><span class="value" id="aspSumMarket">0 件</span></div>
                 </div>
@@ -497,6 +498,32 @@
         return allLogs;
     }
 
+    function calcSellAmounts(log, item, category) {
+        var grossEach = log.data.cost_each || 0;
+        var grossTotal = grossEach * item.qty;
+        var totalItemsQty = (log.data.items || []).reduce(function(s, i) { return s + i.qty; }, 0);
+        var share = totalItemsQty > 0 ? item.qty / totalItemsQty : 1;
+
+        if (category !== 'market') {
+            var bazaarTotal = log.data.cost_total != null ? Math.round(log.data.cost_total * share) : grossTotal;
+            var bazaarEach = item.qty > 0 ? Math.round(bazaarTotal / item.qty) : 0;
+            return {
+                grossEach: bazaarEach,
+                grossTotal: bazaarTotal,
+                fee: 0,
+                netEach: bazaarEach,
+                netTotal: bazaarTotal
+            };
+        }
+
+        var fee = Math.round((log.data.fee || 0) * share);
+        var netTotal = log.data.cost_total != null
+            ? Math.round(log.data.cost_total * share)
+            : grossTotal - fee;
+        var netEach = item.qty > 0 ? Math.round(netTotal / item.qty) : 0;
+        return { grossEach: grossEach, grossTotal: grossTotal, fee: fee, netEach: netEach, netTotal: netTotal };
+    }
+
     function processSellLogs(logs, targetId, allowedLogIds) {
         var sells = [];
         var allowedSet = {};
@@ -512,19 +539,18 @@
             (log.data.items || []).forEach(function(item) {
                 if (item.id !== targetId) return;
 
-                var costEach = log.data.cost_each;
-                if (costEach == null && log.data.cost_total != null && item.qty > 0) {
-                    costEach = Math.round(log.data.cost_total / item.qty);
-                }
-
+                var amounts = calcSellAmounts(log, item, category);
                 sells.push({
                     id: logId,
                     type: category,
                     typeName: getLogTypeName(log.log),
                     timestamp: log.timestamp,
                     qty: item.qty,
-                    priceEach: costEach || 0,
-                    revenueTotal: item.qty * (costEach || 0),
+                    grossEach: amounts.grossEach,
+                    grossTotal: amounts.grossTotal,
+                    fee: amounts.fee,
+                    priceEach: amounts.netEach,
+                    revenueTotal: amounts.netTotal,
                     buyer: log.data.buyer || log.data.seller || null
                 });
             });
@@ -535,6 +561,7 @@
     function renderResults(sells, itemName) {
         var totalQty = sells.reduce(function(s, p) { return s + p.qty; }, 0);
         var totalRevenue = sells.reduce(function(s, p) { return s + p.revenueTotal; }, 0);
+        var totalFee = sells.reduce(function(s, p) { return s + p.fee; }, 0);
         var avgPrice = totalQty > 0 ? Math.round(totalRevenue / totalQty) : 0;
         var bazaarQty = sells.filter(function(p) { return p.type === 'bazaar'; }).reduce(function(s, p) { return s + p.qty; }, 0);
         var marketQty = sells.filter(function(p) { return p.type === 'market'; }).reduce(function(s, p) { return s + p.qty; }, 0);
@@ -543,6 +570,7 @@
         document.getElementById('aspSumQty').textContent = totalQty.toLocaleString();
         document.getElementById('aspSumRevenue').textContent = formatMoney(totalRevenue);
         document.getElementById('aspSumAvg').textContent = formatMoney(avgPrice);
+        document.getElementById('aspSumFee').textContent = formatMoney(totalFee);
         document.getElementById('aspSumBazaar').textContent = bazaarQty.toLocaleString() + ' 件';
         document.getElementById('aspSumMarket').textContent = marketQty.toLocaleString() + ' 件';
 
@@ -552,8 +580,12 @@
         sells.forEach(function(p) {
             var div = document.createElement('div');
             div.className = 'asp-sell-item ' + p.type;
+            var priceInfo = p.type === 'market'
+                ? '<p>挂牌：' + formatMoney(p.grossEach) + ' × ' + p.qty + ' = ' + formatMoney(p.grossTotal) +
+                  ' | 税费：' + formatMoney(p.fee) + ' | 实际：' + formatMoney(p.revenueTotal) + '（均价 ' + formatMoney(p.priceEach) + '）</p>'
+                : '<p>数量：' + p.qty + ' | 单价：' + formatMoney(p.priceEach) + ' | 总价：' + formatMoney(p.revenueTotal) + '</p>';
             div.innerHTML = '<h4>' + p.typeName + ' - ' + formatTime(p.timestamp) + '</h4>' +
-                '<p>数量：' + p.qty + ' | 单价：' + formatMoney(p.priceEach) + ' | 总价：' + formatMoney(p.revenueTotal) + '</p>' +
+                priceInfo +
                 '<p>买家ID：' + (p.buyer || '匿名') + '</p>';
             listEl.appendChild(div);
         });
