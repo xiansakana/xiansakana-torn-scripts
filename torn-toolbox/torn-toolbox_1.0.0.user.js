@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 工具箱
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
+// @version      1.1.2
 // @description  整合购买均价、出售均价、攻击筛选、公司监听的统一工具箱
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
@@ -16,7 +16,7 @@
 
     var MUG_WINDOW_SECONDS = 5 * 60;
     var API_DELAY_MS = 1000;
-    var ATTACKS_API_DELAY_MS = 100;
+    var ATTACKS_API_DELAY_MS = 1000;
     var RATE_LIMIT_RETRIES = 5;
     var SELL_LOG_TYPES = {
         bazaar: { ids: [1221, 1226] },
@@ -286,23 +286,33 @@
         return data.error.code === 5 || (data.error.error || '').toLowerCase().indexOf('too many') !== -1;
     }
 
-    async function fetchLogsPage(apiKey, logTypes, from, to, onWait) {
+    function apiErrorMessage(data) {
+        if (!data || !data.error) return 'API 返回错误';
+        return typeof data.error === 'object' ? (data.error.error || 'API 返回错误') : String(data.error);
+    }
+
+    async function fetchJsonWithRetry(url, onWait) {
         var attempt = 0;
         while (true) {
-            var url = 'https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey)
-                + '&log=' + encodeURIComponent(logTypes) + '&from=' + from + '&to=' + to;
             var data = await (await fetch(url)).json();
             if (isRateLimitError(data)) {
                 attempt++;
-                if (attempt > RATE_LIMIT_RETRIES) throw new Error(data.error.error);
+                if (attempt > RATE_LIMIT_RETRIES) throw new Error(apiErrorMessage(data));
                 var waitMs = 5000 * attempt;
                 if (onWait) onWait(waitMs, attempt);
                 await sleep(waitMs);
                 continue;
             }
-            if (data.error) throw new Error(data.error.error || data.error);
-            return data.log || {};
+            if (data.error) throw new Error(apiErrorMessage(data));
+            return data;
         }
+    }
+
+    async function fetchLogsPage(apiKey, logTypes, from, to, onWait) {
+        var url = 'https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey)
+            + '&log=' + encodeURIComponent(logTypes) + '&from=' + from + '&to=' + to;
+        var data = await fetchJsonWithRetry(url, onWait);
+        return data.log || {};
     }
 
     async function fetchAllLogs(apiKey, logTypes, from, to, onProgress) {
@@ -333,8 +343,9 @@
         displayEl.textContent = '-- 加载中... --';
         if (errEl) errEl.textContent = '';
         try {
-            var data = await (await fetch('https://api.torn.com/v2/torn/items?key=' + encodeURIComponent(apiKey))).json();
-            if (data.error) throw new Error(data.error.error || data.error);
+            var data = await fetchJsonWithRetry(
+                'https://api.torn.com/v2/torn/items?key=' + encodeURIComponent(apiKey)
+            );
             itemsCache = normalizeItems(data.items);
             displayEl.textContent = '-- 请选择物品 (' + itemsCache.length + ') --';
         } catch (e) {
@@ -459,7 +470,7 @@
                     <div class="ttb-field"><label>方向</label>
                         <select id="atk-filter"><option value="outgoing">Outgoing（发出的攻击）</option><option value="incoming">Incoming（收到的攻击）</option></select>
                     </div>
-                    <div class="ttb-field"><label>Defender Faction ID</label><input type="number" id="atk-faction" placeholder="8076" /></div>
+                    <div class="ttb-field"><label>Defender Faction ID（可选）</label><input type="number" id="atk-faction" placeholder="留空则不按派系筛选" /></div>
                     <div class="ttb-field"><label>Warlord Bonus（可选）</label><input type="number" step="0.01" id="atk-warlord" placeholder="1.39" /></div>
                     <div class="ttb-row">
                         <div class="ttb-field"><label>开始</label><input type="datetime-local" id="atk-start" /></div>
@@ -939,7 +950,7 @@
     });
 
     // ─── Attacks ───
-    async function fetchAllAttacks(apiKey, filters, from, to) {
+    async function fetchAllAttacks(apiKey, filters, from, to, onProgress) {
         var all = [], hasMore = true, page = 0;
         while (hasMore && page < 1000) {
             page++;
@@ -948,8 +959,11 @@
             params.append('limit', '100'); params.append('sort', 'DESC');
             if (from) params.append('from', from); if (to) params.append('to', to);
             params.append('key', apiKey);
-            var data = await (await fetch('https://api.torn.com/v2/user/attacks?' + params)).json();
-            if (data.error) throw new Error(data.error.error || data.error);
+            var url = 'https://api.torn.com/v2/user/attacks?' + params;
+            var data = await fetchJsonWithRetry(url, function(w, a) {
+                if (onProgress) onProgress(page, w, a);
+            });
+            if (onProgress) onProgress(page);
             if (data.attacks && data.attacks.length) {
                 all = all.concat(data.attacks);
                 if (data.attacks.length < 100) hasMore = false;
@@ -982,18 +996,22 @@
         var res = document.getElementById('atk-result');
         err.textContent = ''; info.textContent = ''; res.classList.remove('show');
         var apiKey = saveApiKey();
-        var faction = parseInt(document.getElementById('atk-faction').value);
+        var factionRaw = document.getElementById('atk-faction').value.trim();
+        var faction = factionRaw ? parseInt(factionRaw, 10) : null;
         var warlord = document.getElementById('atk-warlord').value.trim();
         var startTs = toTimestamp(document.getElementById('atk-start').value);
         var endTs = toTimestamp(document.getElementById('atk-end').value);
         if (!apiKey) { err.textContent = '请填写 API Key'; return; }
-        if (isNaN(faction)) { err.textContent = '请输入 Faction ID'; return; }
+        if (factionRaw && isNaN(faction)) { err.textContent = '请输入有效的 Faction ID'; return; }
         if (!startTs || !endTs || startTs >= endTs) { err.textContent = '请选择有效时间范围'; return; }
         var wb = warlord ? parseFloat(warlord) : null;
         btn.disabled = true; btn.textContent = '查询中...';
         try {
             info.textContent = '正在获取数据...';
-            var all = await fetchAllAttacks(apiKey, [document.getElementById('atk-filter').value], startTs, endTs);
+            var all = await fetchAllAttacks(apiKey, [document.getElementById('atk-filter').value], startTs, endTs, function(pg, w, a) {
+                if (w) setRateLimitProgress(info, w, a);
+                else info.textContent = '正在获取攻击数据（第 ' + pg + ' 页）...';
+            });
             if (!all.length) {
                 err.textContent = '未获取到任何攻击数据';
                 info.textContent = '';
@@ -1001,7 +1019,7 @@
             }
             info.textContent = '已获取 ' + all.length + ' 条数据，正在筛选...';
             var filtered = all.filter(function(a) {
-                if (a.defender?.faction?.id !== faction) return false;
+                if (faction !== null && a.defender?.faction?.id !== faction) return false;
                 if (a.ended < startTs || a.ended > endTs) return false;
                 if (wb !== null && a.modifiers?.warlord !== wb) return false;
                 return true;
@@ -1054,8 +1072,9 @@
             document.getElementById('co-error').textContent = '';
             companyState.checks++;
             document.getElementById('co-checks').textContent = companyState.checks;
-            var data = await (await fetch('https://api.torn.com/company/?selections=applications&key=' + encodeURIComponent(apiKey))).json();
-            if (data.error) throw new Error(data.error.error || 'API返回错误');
+            var data = await fetchJsonWithRetry(
+                'https://api.torn.com/company/?selections=applications&key=' + encodeURIComponent(apiKey)
+            );
             if (data.applications && typeof data.applications === 'object') {
                 var newApps = [];
                 Object.keys(data.applications).forEach(function(id) {
