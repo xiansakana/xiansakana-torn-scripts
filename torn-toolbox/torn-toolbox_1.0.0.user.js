@@ -44,22 +44,31 @@
             --ttb-success: #4ade80; --ttb-success-dk: #15803d;
             --ttb-danger: #fb7185; --ttb-danger-dk: #be123c;
             --ttb-warn: #fcd34d; --ttb-radius: 12px;
-            position: fixed; top: 50%; right: 16px; z-index: 99998;
+            --ttb-fab-size: 52px; --ttb-fab-peek: 26px;
+            position: fixed; top: 50%; right: 0; z-index: 99998;
             transform: translateY(-50%);
             display: flex; flex-direction: row-reverse; align-items: center; gap: 12px;
             font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px;
         }
-        #ttb-root.ttb-dragging { user-select: none; }
-        #ttb-root.ttb-dragging, #ttb-root.ttb-dragging * { cursor: grabbing !important; }
         #ttb-fab {
             position: relative; flex-shrink: 0;
-            width: 52px; height: 52px; border: none; border-radius: 50%;
+            width: var(--ttb-fab-size); height: var(--ttb-fab-size); border: none; border-radius: 50%;
             background: linear-gradient(135deg, #3b82f6, #6366f1);
-            color: #fff; font-size: 22px; cursor: grab;
+            color: #fff; font-size: 22px; cursor: pointer;
             box-shadow: 0 4px 20px rgba(59,130,246,.5);
-            transition: transform .2s, box-shadow .2s;
+            transition: transform .25s ease, box-shadow .2s, border-radius .25s ease;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        #ttb-fab:hover { transform: scale(1.06); box-shadow: 0 6px 28px rgba(59,130,246,.6); }
+        #ttb-root:not(.ttb-expanded) #ttb-fab {
+            transform: translateX(calc(var(--ttb-fab-size) - var(--ttb-fab-peek)));
+            border-radius: 50% 0 0 50%;
+        }
+        #ttb-root:not(.ttb-expanded):hover #ttb-fab,
+        #ttb-root:not(.ttb-expanded).ttb-fab-reveal #ttb-fab {
+            transform: translateX(0) scale(1.06);
+            border-radius: 50%;
+            box-shadow: 0 6px 28px rgba(59,130,246,.6);
+        }
         #ttb-root.ttb-expanded #ttb-fab { display: none; }
         #ttb-fab.monitoring::after {
             content: ''; position: absolute; top: 4px; right: 4px;
@@ -84,7 +93,6 @@
             display: flex; align-items: center; justify-content: space-between;
             padding: 14px 16px; background: linear-gradient(135deg, #2f3540, #252930);
             border-bottom: 1px solid var(--ttb-border);
-            cursor: grab;
         }
         .ttb-header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .3px; color: var(--ttb-text); }
         .ttb-header-btns { display: flex; gap: 6px; }
@@ -234,8 +242,8 @@
         .ttb-status span { color: var(--ttb-text); font-weight: 600; }
         @keyframes ttbIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
         @media (max-width: 500px) {
-            #ttb-root { right: 10px; gap: 8px; }
-            #ttb-panel { width: calc(100vw - 88px); height: 80vh; max-height: 80vh; }
+            #ttb-root { gap: 8px; }
+            #ttb-panel { width: calc(100vw - 16px); height: 80vh; max-height: 80vh; }
         }
     `);
 
@@ -394,10 +402,10 @@
     var root = document.createElement('div');
     root.id = 'ttb-root';
     root.innerHTML = `
-        <button id="ttb-fab" title="点击打开 · 拖动移动">⚙</button>
+        <button id="ttb-fab" title="点击打开 · 悬停或轻触展开">⚙</button>
         <div id="ttb-panel">
             <div class="ttb-top">
-            <div class="ttb-header" title="拖动标题栏移动工具箱">
+            <div class="ttb-header">
                 <h1>🛠 Torn 工具箱</h1>
                 <div class="ttb-header-btns">
                     <button class="ttb-icon-btn" id="ttb-minimize" title="收起">−</button>
@@ -472,6 +480,23 @@
                     </div>
                     <div class="ttb-field"><label>Defender Faction ID（可选）</label><input type="number" id="atk-faction" placeholder="留空则不按派系筛选" /></div>
                     <div class="ttb-field"><label>Warlord Bonus（可选）</label><input type="number" step="0.01" id="atk-warlord" placeholder="1.39" /></div>
+                    <div class="ttb-field"><label>攻击结果（可选）</label>
+                        <select id="atk-result-filter">
+                            <option value="">全部（不筛选）</option>
+                            <option value="Mugged">Mugged（被抢）</option>
+                            <option value="Hospitalized">Hospitalized（住院）</option>
+                            <option value="Attacked">Attacked（攻击）</option>
+                            <option value="Lost">Lost（失败）</option>
+                            <option value="Stalemate">Stalemate（僵局）</option>
+                            <option value="Escape">Escape（逃脱）</option>
+                            <option value="Arrested">Arrested（被捕）</option>
+                            <option value="Looted">Looted（被搜刮）</option>
+                            <option value="Assist">Assist（协助）</option>
+                            <option value="Interrupted">Interrupted（中断）</option>
+                            <option value="Timeout">Timeout（超时）</option>
+                            <option value="Special">Special（特殊）</option>
+                        </select>
+                    </div>
                     <div class="ttb-row">
                         <div class="ttb-field"><label>开始</label><input type="datetime-local" id="atk-start" /></div>
                         <div class="ttb-field"><label>结束</label><input type="datetime-local" id="atk-end" /></div>
@@ -508,103 +533,32 @@
     var savedKey = localStorage.getItem('APIKey') || GM_getValue('tornApiKey', '');
     if (savedKey) document.getElementById('ttb-api-key').value = savedKey;
 
-    var fabDidDrag = false;
+    var fabPeekTimer = null;
 
-    (function setupDrag() {
-        var drag = { active: false, moved: false, source: null, startX: 0, startY: 0, startLeft: 0, startTop: 0 };
-        var THRESHOLD = 5;
+    function revealFabPeek() {
+        if (root.classList.contains('ttb-expanded')) return;
+        root.classList.add('ttb-fab-reveal');
+        clearTimeout(fabPeekTimer);
+    }
 
-        function clampPosition(left, top) {
-            var w = root.offsetWidth;
-            var h = root.offsetHeight;
-            return {
-                left: Math.max(0, Math.min(left, window.innerWidth - w)),
-                top: Math.max(0, Math.min(top, window.innerHeight - h))
-            };
-        }
+    function hideFabPeek(delay) {
+        clearTimeout(fabPeekTimer);
+        if (root.classList.contains('ttb-expanded') || !root.classList.contains('ttb-fab-reveal')) return;
+        fabPeekTimer = setTimeout(function() {
+            root.classList.remove('ttb-fab-reveal');
+        }, delay == null ? 0 : delay);
+    }
 
-        function applyPosition(left, top) {
-            var p = clampPosition(left, top);
-            root.style.left = p.left + 'px';
-            root.style.top = p.top + 'px';
-            root.style.right = 'auto';
-            root.style.transform = 'none';
-        }
-
-        function savePosition() {
-            var rect = root.getBoundingClientRect();
-            GM_setValue('ttbPosition', { left: rect.left, top: rect.top });
-        }
-
-        function pointerXY(e) {
-            if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            return { x: e.clientX, y: e.clientY };
-        }
-
-        function startDrag(e, source) {
-            var pt = pointerXY(e);
-            drag.active = true;
-            drag.moved = false;
-            drag.source = source;
-            drag.startX = pt.x;
-            drag.startY = pt.y;
-            var rect = root.getBoundingClientRect();
-            drag.startLeft = rect.left;
-            drag.startTop = rect.top;
-            root.classList.add('ttb-dragging');
-            e.preventDefault();
-        }
-
-        function onMove(e) {
-            if (!drag.active) return;
-            var pt = pointerXY(e);
-            var dx = pt.x - drag.startX;
-            var dy = pt.y - drag.startY;
-            if (!drag.moved && Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
-            drag.moved = true;
-            applyPosition(drag.startLeft + dx, drag.startTop + dy);
-            e.preventDefault();
-        }
-
-        function endDrag() {
-            if (!drag.active) return { moved: false, source: null };
-            var result = { moved: drag.moved, source: drag.source };
-            if (drag.moved) savePosition();
-            drag.active = false;
-            drag.moved = false;
-            drag.source = null;
-            root.classList.remove('ttb-dragging');
-            return result;
-        }
-
-        var saved = GM_getValue('ttbPosition', null);
-        if (saved && typeof saved.left === 'number' && typeof saved.top === 'number') {
-            applyPosition(saved.left, saved.top);
-        }
-
-        document.querySelector('.ttb-header').addEventListener('mousedown', function(e) {
-            if (e.target.closest('.ttb-icon-btn, button, input, select, a')) return;
-            startDrag(e, 'header');
-        });
-        fab.addEventListener('mousedown', function(e) { startDrag(e, 'fab'); });
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', function() {
-            var r = endDrag();
-            fabDidDrag = r.moved && r.source === 'fab';
-        });
-        document.querySelector('.ttb-header').addEventListener('touchstart', function(e) {
-            if (e.target.closest('.ttb-icon-btn, button, input, select, a')) return;
-            startDrag(e, 'header');
-        }, { passive: false });
-        fab.addEventListener('touchstart', function(e) { startDrag(e, 'fab'); }, { passive: false });
-        document.addEventListener('touchmove', onMove, { passive: false });
-        document.addEventListener('touchend', function() {
-            var r = endDrag();
-            fabDidDrag = r.moved && r.source === 'fab';
-        });
-    })();
+    root.addEventListener('mouseenter', revealFabPeek);
+    root.addEventListener('mouseleave', function() { hideFabPeek(0); });
+    fab.addEventListener('touchstart', revealFabPeek, { passive: true });
+    document.addEventListener('touchend', function() {
+        if (!root.classList.contains('ttb-expanded')) hideFabPeek(2000);
+    });
 
     function openToolbox() {
+        root.classList.remove('ttb-fab-reveal');
+        clearTimeout(fabPeekTimer);
         panel.classList.add('open');
         void root.offsetHeight;
         root.classList.add('ttb-expanded');
@@ -616,13 +570,15 @@
     function closeToolbox() {
         root.classList.remove('ttb-expanded');
         panel.classList.remove('open');
+        hideFabPeek(800);
     }
 
-    fab.addEventListener('click', function() {
-        if (fabDidDrag) { fabDidDrag = false; return; }
+    function toggleToolbox() {
         if (panel.classList.contains('open')) closeToolbox();
         else openToolbox();
-    });
+    }
+
+    fab.addEventListener('click', toggleToolbox);
     document.getElementById('ttb-minimize').addEventListener('click', closeToolbox);
     function closeAllSelectDrops() {
         document.querySelectorAll('.ttb-select-drop.show').forEach(function(el) { el.classList.remove('show'); });
@@ -999,6 +955,7 @@
         var factionRaw = document.getElementById('atk-faction').value.trim();
         var faction = factionRaw ? parseInt(factionRaw, 10) : null;
         var warlord = document.getElementById('atk-warlord').value.trim();
+        var resultFilter = document.getElementById('atk-result-filter').value;
         var startTs = toTimestamp(document.getElementById('atk-start').value);
         var endTs = toTimestamp(document.getElementById('atk-end').value);
         if (!apiKey) { err.textContent = '请填写 API Key'; return; }
@@ -1022,6 +979,7 @@
                 if (faction !== null && a.defender?.faction?.id !== faction) return false;
                 if (a.ended < startTs || a.ended > endTs) return false;
                 if (wb !== null && a.modifiers?.warlord !== wb) return false;
+                if (resultFilter && a.result !== resultFilter) return false;
                 return true;
             });
             document.getElementById('atk-count').textContent = filtered.length;
