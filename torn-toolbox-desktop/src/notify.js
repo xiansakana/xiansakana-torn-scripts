@@ -1,5 +1,6 @@
 import notifier from 'node-notifier';
 import { sanitizeQqText } from './utils.js';
+import { normalizeQqTargets } from './company-watchers.js';
 
 export async function sendDesktopNotification(title, text) {
     return new Promise(function(resolve) {
@@ -21,19 +22,24 @@ function buildQqPayload(qqConfig, text) {
     return payload;
 }
 
-export function buildWatcherQqConfig(globalNotify, watcherNotify) {
-    if (!watcherNotify?.qq?.enabled) return null;
+export function buildWatcherQqConfigs(globalNotify, watcherNotify) {
+    if (!watcherNotify?.qq?.enabled) return [];
     var globalQq = globalNotify?.qq || {};
-    if (!globalQq.url) return null;
-    return {
-        enabled: true,
-        url: globalQq.url,
-        token: globalQq.token,
-        type: watcherNotify.qq.type || 'group',
-        groupId: watcherNotify.qq.groupId || '',
-        userId: watcherNotify.qq.userId || '',
-        atUserId: watcherNotify.qq.atUserId || ''
-    };
+    if (!globalQq.url) return [];
+    return normalizeQqTargets(watcherNotify.qq).map(function(target) {
+        return {
+            enabled: true,
+            url: globalQq.url,
+            token: globalQq.token,
+            type: target.type || 'group',
+            groupId: target.groupId || '',
+            userId: target.userId || '',
+            atUserId: target.atUserId || ''
+        };
+    }).filter(function(cfg) {
+        if (cfg.type === 'private') return !!cfg.userId;
+        return !!cfg.groupId;
+    });
 }
 
 export async function sendQqNotification(qqConfig, text) {
@@ -81,25 +87,6 @@ function formatCompanyApplicationText(label, newApps) {
     return prefix + summary + (details ? '：' + details : '');
 }
 
-export async function notifyCompanyApplications(globalNotify, watcherNotify, label, newApps) {
-    var text = formatCompanyApplicationText(label, newApps);
-    var tasks = [];
-    if (watcherNotify?.desktop !== false && globalNotify?.desktop) {
-        tasks.push(sendDesktopNotification('Torn 公司新申请', text));
-    }
-    var qqConfig = buildWatcherQqConfig(globalNotify, watcherNotify);
-    if (qqConfig) {
-        tasks.push(sendQqNotification(qqConfig, '[Torn公司] ' + text));
-    }
-    await Promise.allSettled(tasks).then(function(results) {
-        results.forEach(function(result) {
-            if (result.status === 'rejected') {
-                console.error('[notify]', result.reason?.message || result.reason);
-            }
-        });
-    });
-}
-
 function describeQqTarget(qqConfig) {
     if (qqConfig.type === 'private') {
         return '私聊 ' + qqConfig.userId;
@@ -110,22 +97,48 @@ function describeQqTarget(qqConfig) {
     return '群 ' + qqConfig.groupId;
 }
 
+export async function notifyCompanyApplications(globalNotify, watcherNotify, label, newApps) {
+    var text = formatCompanyApplicationText(label, newApps);
+    var tasks = [];
+    if (watcherNotify?.desktop !== false && globalNotify?.desktop) {
+        tasks.push(sendDesktopNotification('Torn 公司新申请', text));
+    }
+    buildWatcherQqConfigs(globalNotify, watcherNotify).forEach(function(qqConfig) {
+        tasks.push(sendQqNotification(qqConfig, '[Torn公司] ' + text));
+    });
+    await Promise.allSettled(tasks).then(function(results) {
+        results.forEach(function(result) {
+            if (result.status === 'rejected') {
+                console.error('[notify]', result.reason?.message || result.reason);
+            }
+        });
+    });
+}
+
 export async function testCompanyWatcherNotify(globalNotify, watcher) {
     var label = watcher.label || '测试';
     var watcherNotify = watcher.notify || {};
     if (!watcherNotify.qq?.enabled) {
         throw new Error('请先启用该账号的 QQ 通知');
     }
-    var qqConfig = buildWatcherQqConfig(globalNotify, watcherNotify);
-    if (!qqConfig?.url) {
-        throw new Error('请先在全局设置填写 QQ 推送地址');
-    }
-    if (qqConfig.type === 'private') {
-        if (!qqConfig.userId) throw new Error('私聊模式请填写 QQ 号');
-    } else if (!qqConfig.groupId) {
-        throw new Error('群聊模式请填写群号');
+    var configs = buildWatcherQqConfigs(globalNotify, watcherNotify);
+    if (!configs.length) {
+        throw new Error('请至少添加一个有效的 QQ 通知方式（群号或私聊 QQ 号）');
     }
     var text = '[' + label + '] 测试通知 - 公司监听配置正常';
-    await sendQqNotification(qqConfig, '[Torn公司] ' + text);
-    return { target: describeQqTarget(qqConfig) };
+    var sent = [];
+    var errors = [];
+    for (var i = 0; i < configs.length; i++) {
+        var cfg = configs[i];
+        try {
+            await sendQqNotification(cfg, '[Torn公司] ' + text);
+            sent.push(describeQqTarget(cfg));
+        } catch (err) {
+            errors.push(describeQqTarget(cfg) + ': ' + err.message);
+        }
+    }
+    if (!sent.length) {
+        throw new Error(errors.join('；'));
+    }
+    return { targets: sent, errors: errors.length ? errors : undefined };
 }

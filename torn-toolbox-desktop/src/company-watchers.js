@@ -1,3 +1,45 @@
+export function normalizeQqTargets(qq) {
+    if (!qq) return [];
+    if (Array.isArray(qq.targets) && qq.targets.length) {
+        return qq.targets.map(function(target) {
+            return {
+                id: target.id || ('t-' + Math.random().toString(36).slice(2, 8)),
+                type: target.type || 'group',
+                groupId: String(target.groupId || '').trim(),
+                atUserId: String(target.atUserId || '').trim(),
+                userId: String(target.userId || '').trim()
+            };
+        });
+    }
+    if (qq.groupId || qq.userId) {
+        return [{
+            id: 'legacy',
+            type: qq.type || (qq.userId && !qq.groupId ? 'private' : 'group'),
+            groupId: String(qq.groupId || '').trim(),
+            atUserId: String(qq.atUserId || '').trim(),
+            userId: String(qq.userId || '').trim()
+        }];
+    }
+    return [];
+}
+
+export function mergeQqTargets(incoming, previous) {
+    var prevList = normalizeQqTargets(previous);
+    if (!Array.isArray(incoming)) {
+        return prevList.length ? prevList : normalizeQqTargets(previous);
+    }
+    return incoming.map(function(target, index) {
+        var prev = prevList.find(function(item) { return item.id === target.id; }) || prevList[index] || {};
+        return {
+            id: target.id || prev.id || ('t-' + Date.now() + '-' + index),
+            type: target.type || prev.type || 'group',
+            groupId: String(target.groupId ?? prev.groupId ?? '').trim(),
+            atUserId: String(target.atUserId ?? prev.atUserId ?? '').trim(),
+            userId: String(target.userId ?? prev.userId ?? '').trim()
+        };
+    });
+}
+
 export function normalizeCompanyWatchers(config) {
     var watchers = config.company?.watchers;
     if (Array.isArray(watchers) && watchers.length) {
@@ -31,7 +73,13 @@ export function maskWatcherForClient(watcher) {
         enabled: watcher.enabled !== false,
         hasApiKey: !!(watcher.apiKey && String(watcher.apiKey).trim()),
         apiKey: watcher.apiKey ? '***' + String(watcher.apiKey).slice(-4) : '',
-        notify: watcher.notify || {}
+        notify: {
+            desktop: watcher.notify?.desktop !== false,
+            qq: {
+                enabled: watcher.notify?.qq?.enabled !== false,
+                targets: normalizeQqTargets(watcher.notify?.qq)
+            }
+        }
     };
 }
 
@@ -43,6 +91,8 @@ export function mergeWatcherConfig(incoming, previous, fallbackApiKey) {
     if (!apiKey && fallbackApiKey && incoming.id === 'default') {
         apiKey = String(fallbackApiKey).trim();
     }
+    var prevQq = prev.notify?.qq || {};
+    var incomingQq = incoming.notify?.qq || {};
     return {
         id: incoming.id || prev.id || ('w-' + Date.now()),
         label: incoming.label || prev.label || '未命名',
@@ -51,11 +101,8 @@ export function mergeWatcherConfig(incoming, previous, fallbackApiKey) {
         notify: {
             desktop: incoming.notify?.desktop ?? prev.notify?.desktop ?? true,
             qq: {
-                enabled: incoming.notify?.qq?.enabled ?? prev.notify?.qq?.enabled ?? true,
-                type: incoming.notify?.qq?.type || prev.notify?.qq?.type || 'group',
-                groupId: incoming.notify?.qq?.groupId ?? prev.notify?.qq?.groupId ?? '',
-                atUserId: incoming.notify?.qq?.atUserId ?? prev.notify?.qq?.atUserId ?? '',
-                userId: incoming.notify?.qq?.userId ?? prev.notify?.qq?.userId ?? ''
+                enabled: incomingQq.enabled ?? prevQq.enabled ?? true,
+                targets: mergeQqTargets(incomingQq.targets, prevQq)
             }
         }
     };

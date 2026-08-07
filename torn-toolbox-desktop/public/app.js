@@ -94,6 +94,50 @@ function updateCompanyState(state) {
     renderWatcherMeta(state.watchers || []);
 }
 
+function defaultQqTarget() {
+    return {
+        id: 't-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        type: 'group',
+        groupId: '',
+        atUserId: '',
+        userId: ''
+    };
+}
+
+function normalizeWatcherNotify(notify) {
+    notify = notify || {};
+    var qq = notify.qq || {};
+    var targets = [];
+    if (Array.isArray(qq.targets) && qq.targets.length) {
+        targets = qq.targets.map(function(target) {
+            return {
+                id: target.id || defaultQqTarget().id,
+                type: target.type || 'group',
+                groupId: target.groupId || '',
+                atUserId: target.atUserId || '',
+                userId: target.userId || ''
+            };
+        });
+    } else if (qq.groupId || qq.userId) {
+        targets = [{
+            id: 'legacy',
+            type: qq.type || (qq.userId && !qq.groupId ? 'private' : 'group'),
+            groupId: qq.groupId || '',
+            atUserId: qq.atUserId || '',
+            userId: qq.userId || ''
+        }];
+    } else {
+        targets = [defaultQqTarget()];
+    }
+    return {
+        desktop: notify.desktop !== false,
+        qq: {
+            enabled: qq.enabled !== false,
+            targets: targets
+        }
+    };
+}
+
 function defaultWatcher(label) {
     return {
         id: 'w-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -101,16 +145,10 @@ function defaultWatcher(label) {
         enabled: true,
         apiKey: '',
         hasApiKey: false,
-        notify: {
+        notify: normalizeWatcherNotify({
             desktop: true,
-            qq: {
-                enabled: true,
-                type: 'group',
-                groupId: '',
-                atUserId: '',
-                userId: ''
-            }
-        }
+            qq: { enabled: true, targets: [defaultQqTarget()] }
+        })
     };
 }
 
@@ -128,11 +166,33 @@ function renderWatcherMeta(watchers) {
     });
 }
 
-function toggleWatcherTargetFields(card, type) {
+function toggleTargetFields(row, type) {
     var isGroup = type === 'group';
-    card.querySelector('[data-field="groupId"]').closest('.field').hidden = !isGroup;
-    card.querySelector('[data-field="atUserId"]').closest('.field').hidden = !isGroup;
-    card.querySelector('[data-field="userId"]').closest('.field').hidden = isGroup;
+    row.querySelector('[data-field="groupId"]').closest('.field').hidden = !isGroup;
+    row.querySelector('[data-field="atUserId"]').closest('.field').hidden = !isGroup;
+    row.querySelector('[data-field="userId"]').closest('.field').hidden = isGroup;
+}
+
+function renderQqTargetRow(target, index) {
+    var type = target.type || 'group';
+    var isGroup = type === 'group';
+    return ''
+        + '<div class="notify-target" data-target-id="' + escapeHtml(target.id) + '">'
+        + '<div class="notify-target-head"><span>通知方式 ' + (index + 1) + '</span>'
+        + '<button type="button" class="btn small danger" data-action="remove-target">删除</button></div>'
+        + '<div class="watcher-grid">'
+        + '<div class="field"><label>类型</label><select data-field="targetType">'
+        + '<option value="group"' + (isGroup ? ' selected' : '') + '>群聊</option>'
+        + '<option value="private"' + (!isGroup ? ' selected' : '') + '>私聊</option>'
+        + '</select></div>'
+        + '<div class="field"' + (isGroup ? '' : ' hidden') + '><label>群号</label><input type="text" data-field="groupId" value="' + escapeHtml(target.groupId || '') + '"></div>'
+        + '<div class="field"' + (isGroup ? '' : ' hidden') + '><label>@ QQ 号（留空直接发）</label><input type="text" data-field="atUserId" value="' + escapeHtml(target.atUserId || '') + '"></div>'
+        + '<div class="field"' + (!isGroup ? '' : ' hidden') + '><label>私聊 QQ 号</label><input type="text" data-field="userId" value="' + escapeHtml(target.userId || '') + '"></div>'
+        + '</div></div>';
+}
+
+function syncCompanyWatchersFromDom() {
+    companyWatchers = collectCompanyWatchersFromDom();
 }
 
 function renderCompanyWatchers() {
@@ -163,17 +223,18 @@ function renderCompanyWatchers() {
             + '<label><input type="checkbox" data-field="notifyDesktop"' + (watcher.notify?.desktop !== false ? ' checked' : '') + '> 桌面通知</label>'
             + '<label><input type="checkbox" data-field="qqEnabled"' + (watcher.notify?.qq?.enabled !== false ? ' checked' : '') + '> QQ 通知</label>'
             + '</div>'
-            + '<div class="field"><label>QQ 目标</label><select data-field="qqType">'
-            + '<option value="group"' + ((watcher.notify?.qq?.type || 'group') === 'group' ? ' selected' : '') + '>群聊</option>'
-            + '<option value="private"' + (watcher.notify?.qq?.type === 'private' ? ' selected' : '') + '>私聊</option>'
-            + '</select></div>'
-            + '<div class="field"><label>群号</label><input type="text" data-field="groupId" value="' + escapeHtml(watcher.notify?.qq?.groupId || '') + '"></div>'
-            + '<div class="field"><label>@ QQ 号（留空则直接发送）</label><input type="text" data-field="atUserId" value="' + escapeHtml(watcher.notify?.qq?.atUserId || '') + '"></div>'
-            + '<div class="field"><label>私聊 QQ 号</label><input type="text" data-field="userId" value="' + escapeHtml(watcher.notify?.qq?.userId || '') + '"></div>'
+            + '<div class="notify-targets-section">'
+            + '<div class="section-head">'
+            + '<label>QQ 通知方式（可多个）</label>'
+            + '<button type="button" class="btn small" data-action="add-target">+ 添加方式</button>'
+            + '</div>'
+            + '<div class="notify-targets">'
+            + (watcher.notify?.qq?.targets || [defaultQqTarget()]).map(renderQqTargetRow).join('')
+            + '</div>'
+            + '</div>'
             + '</div>'
             + '<div class="watcher-meta" data-watcher-meta="' + watcher.id + '"></div>';
         container.appendChild(card);
-        toggleWatcherTargetFields(card, watcher.notify?.qq?.type || 'group');
     });
 }
 
@@ -185,6 +246,18 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;');
 }
 
+function collectQqTargetsFromCard(card) {
+    return Array.from(card.querySelectorAll('.notify-target')).map(function(row) {
+        return {
+            id: row.dataset.targetId,
+            type: row.querySelector('[data-field="targetType"]').value,
+            groupId: row.querySelector('[data-field="groupId"]').value.trim(),
+            atUserId: row.querySelector('[data-field="atUserId"]').value.trim(),
+            userId: row.querySelector('[data-field="userId"]').value.trim()
+        };
+    });
+}
+
 function collectWatcherFromCard(card) {
     return {
         label: card.querySelector('[data-field="label"]').value.trim() || '未命名',
@@ -192,10 +265,7 @@ function collectWatcherFromCard(card) {
             desktop: card.querySelector('[data-field="notifyDesktop"]').checked,
             qq: {
                 enabled: card.querySelector('[data-field="qqEnabled"]').checked,
-                type: card.querySelector('[data-field="qqType"]').value,
-                groupId: card.querySelector('[data-field="groupId"]').value.trim(),
-                atUserId: card.querySelector('[data-field="atUserId"]').value.trim(),
-                userId: card.querySelector('[data-field="userId"]').value.trim()
+                targets: collectQqTargetsFromCard(card)
             }
         }
     };
@@ -238,7 +308,9 @@ async function testWatcherNotify(card) {
                 }
             })
         });
-        $('co-message').textContent = '测试通知已发送' + (result.target ? ' → ' + result.target : '');
+        $('co-message').textContent = '测试通知已发送'
+            + (result.targets && result.targets.length ? ' → ' + result.targets.join('；') : '')
+            + (result.errors && result.errors.length ? '（失败: ' + result.errors.join('；') + '）' : '');
     } catch (err) {
         $('co-message').textContent = err.message;
     } finally {
@@ -367,16 +439,7 @@ async function loadState() {
                 enabled: watcher.enabled !== false,
                 apiKey: watcher.apiKey || '',
                 hasApiKey: !!watcher.hasApiKey,
-                notify: {
-                    desktop: watcher.notify?.desktop !== false,
-                    qq: {
-                        enabled: watcher.notify?.qq?.enabled !== false,
-                        type: watcher.notify?.qq?.type || 'group',
-                        groupId: watcher.notify?.qq?.groupId || '',
-                        atUserId: watcher.notify?.qq?.atUserId || '',
-                        userId: watcher.notify?.qq?.userId || ''
-                    }
-                }
+                notify: normalizeWatcherNotify(watcher.notify)
             };
         });
         if (!companyWatchers.length && cfg.hasApiKey) {
@@ -386,16 +449,10 @@ async function loadState() {
                 enabled: true,
                 apiKey: cfg.tornApiKey || '',
                 hasApiKey: true,
-                notify: {
+                notify: normalizeWatcherNotify({
                     desktop: cfg.notify?.desktop !== false,
-                    qq: {
-                        enabled: cfg.notify?.qq?.enabled !== false,
-                        type: 'group',
-                        groupId: '',
-                        atUserId: '',
-                        userId: ''
-                    }
-                }
+                    qq: { enabled: cfg.notify?.qq?.enabled !== false, targets: [defaultQqTarget()] }
+                })
             }];
         }
         renderCompanyWatchers();
@@ -526,15 +583,36 @@ $('co-watchers').addEventListener('click', function(e) {
         testWatcherNotify(card);
         return;
     }
-    if (e.target.dataset.field === 'qqType') {
-        toggleWatcherTargetFields(card, e.target.value);
+    if (e.target.dataset.action === 'add-target') {
+        syncCompanyWatchersFromDom();
+        var watcherForAdd = companyWatchers.find(function(w) { return w.id === card.dataset.id; });
+        if (watcherForAdd) {
+            watcherForAdd.notify.qq.targets.push(defaultQqTarget());
+            renderCompanyWatchers();
+        }
+        return;
     }
-});
+    if (e.target.dataset.action === 'remove-target') {
+        syncCompanyWatchersFromDom();
+        var targetRow = e.target.closest('.notify-target');
+        var watcherForRemove = companyWatchers.find(function(w) { return w.id === card.dataset.id; });
+        if (watcherForRemove && targetRow) {
+            watcherForRemove.notify.qq.targets = watcherForRemove.notify.qq.targets.filter(function(t) {
+                return t.id !== targetRow.dataset.targetId;
+            });
+            if (!watcherForRemove.notify.qq.targets.length) {
+                watcherForRemove.notify.qq.targets.push(defaultQqTarget());
+            }
+            renderCompanyWatchers();
+        }
+        return;
+    }
+};
 
 $('co-watchers').addEventListener('change', function(e) {
-    if (e.target.dataset.field !== 'qqType') return;
-    var card = e.target.closest('.watcher-card');
-    if (card) toggleWatcherTargetFields(card, e.target.value);
+    if (e.target.dataset.field !== 'targetType') return;
+    var row = e.target.closest('.notify-target');
+    if (row) toggleTargetFields(row, e.target.value);
 });
 
 setupItemSelect();

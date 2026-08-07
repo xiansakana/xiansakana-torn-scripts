@@ -26,9 +26,14 @@
           "desktop": false,
           "qq": {
             "enabled": true,
-            "type": "group",
-            "groupId": "263171957",
-            "atUserId": "2461298052"
+            "targets": [
+              {
+                "id": "group-at",
+                "type": "group",
+                "groupId": "263171957",
+                "atUserId": "2461298052"
+              }
+            ]
           }
         }
       }
