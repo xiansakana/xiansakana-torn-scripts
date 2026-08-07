@@ -32,9 +32,7 @@ if [ ! -f config.json ]; then
 fi
 
 if grep -q '"host": "127.0.0.1"' config.json; then
-    echo "警告: server.host 仍为 127.0.0.1，外网无法访问配置页"
-    echo "请改为 0.0.0.0 后重试"
-    exit 1
+    echo "提示: server.host 为 127.0.0.1，仅本机/portal(:80) 可访问（推荐）"
 fi
 
 echo "==> 启动 torn-toolbox-desktop..."
@@ -47,13 +45,12 @@ pm2 startup systemd -u root --hp /root 2>/dev/null || true
 echo "==> 本机健康检查..."
 sleep 1
 curl -sf -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8790/ || true
-echo "==> 监听地址（应为 0.0.0.0:8790）"
+echo "==> 监听地址（推荐 127.0.0.1:8790，由 portal :80 对外）"
 ss -tlnp | grep 8790 || netstat -tlnp 2>/dev/null | grep 8790 || true
 
 PUBLIC_IP="$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo '你的公网IP')"
 echo ""
 echo "部署完成。"
-echo "1. 阿里云安全组放行 TCP 8790（建议只加你的家庭/手机 IP）"
-echo "2. 浏览器打开: http://${PUBLIC_IP}:8790/?token=你在config里设的adminToken"
-echo "3. 页面与本地 http://127.0.0.1:8790/ 相同，配置后会 24/7 在 ECS 上监听"
-echo "4. QQ 通知走本机 qq-bot (127.0.0.1:8787)，无需对外开放 8787"
+echo "1. 推荐通过 portal 访问: http://${PUBLIC_IP}/ → Torn 压价助手"
+echo "2. 若未部署 portal，可安全组放行 8790 直连（不推荐）"
+echo "3. QQ 通知走本机 qq-bot (127.0.0.1:8787)，无需对外开放 8787"

@@ -1,10 +1,10 @@
 {
   "tornApiKey": "填写你的Torn API Key",
   "server": {
-    "host": "0.0.0.0",
+    "host": "127.0.0.1",
     "port": 8790,
     "openBrowser": false,
-    "adminToken": "换成强随机字符串-用于访问配置页"
+    "adminToken": "与portal代理使用的token相同，留空则不需要"
   },
   "undercut": {
     "intervalSeconds": 30,

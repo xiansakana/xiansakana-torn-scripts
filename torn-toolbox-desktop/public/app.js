@@ -18,7 +18,7 @@ function formatNext(ts) {
 }
 
 async function api(path, options) {
-    var resp = await fetch('/api/' + path, options || {});
+    var resp = await fetch('api/' + path, options || {});
     var data = await resp.json();
     if (!resp.ok || data.ok === false) throw new Error(data.error || resp.statusText);
     return data;
@@ -253,7 +253,7 @@ async function saveConfig() {
 }
 
 function connectEvents() {
-    var es = new EventSource('/api/events');
+    var es = new EventSource('api/events');
     es.addEventListener('undercut', function(e) { updateUndercutState(JSON.parse(e.data)); });
     es.addEventListener('undercutAlerts', function(e) { renderUndercutAlerts(JSON.parse(e.data)); });
     es.addEventListener('company', function(e) { updateCompanyState(JSON.parse(e.data)); });

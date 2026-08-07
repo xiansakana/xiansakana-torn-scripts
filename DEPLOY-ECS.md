@@ -45,18 +45,34 @@ chmod +x deploy-ecs.sh
 ./deploy-ecs.sh
 ```
 
-`torn-toolbox-desktop` 的 `notify.qq.token` 必须与 `qq-bot` 的 `server.notifyToken` 一致。
+`torn-toolbox-desktop` 的 `notify.qq.token` 必须与 `qq-bot` 的 `server.notifyToken` 一致。`server.host` 用 **127.0.0.1**（由 portal 对外）。
+
+### 配置 portal（:80 服务导航，推荐）
+
+```bash
+cd ../portal
+cp config.ecs.example.json config.json
+nano config.json   # 设置 auth.username / password / sessionSecret
+chmod +x deploy-ecs.sh
+./deploy-ecs.sh
+```
+
+`torn-toolbox` 的 `server.host` 保持 **127.0.0.1**（仅 portal 转发，不对外暴露 8790）。
+
+在 `portal/config.json` 的 `services` 里可添加更多卡片（外链或 proxy）。
 
 ### 安全组
 
-- 放行 **8790**（配置页，建议限制来源 IP）
-- **8787 不必**对公网开放
+- 放行 **80**（portal 导航页，建议限制来源 IP）
+- **8790 / 8787 不必**对公网开放
 
-访问配置页：
+访问：
 
 ```
-http://123.56.235.12:8790/?token=你的adminToken
+http://123.56.235.12/
 ```
+
+登录 → 点击「Torn 压价助手」卡片 → 内嵌原配置页。
 
 ---
 

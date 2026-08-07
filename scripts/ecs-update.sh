@@ -26,6 +26,14 @@ else
     echo "torn-toolbox 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
 fi
 
+echo "==> portal"
+cd "$ROOT/portal"
+if pm2 describe portal >/dev/null 2>&1; then
+    pm2 restart portal
+else
+    echo "portal 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+fi
+
 pm2 save
 echo "==> 更新完成"
 pm2 status
