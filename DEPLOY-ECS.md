@@ -35,17 +35,25 @@ chmod +x deploy-ecs.sh
 ./deploy-ecs.sh
 ```
 
-### 配置 torn-toolbox-desktop
+### 配置 torn-toolbox-desktop（压价 + 公司，两个独立进程）
 
 ```bash
 cd ../torn-toolbox-desktop
-cp config.ecs.example.json config.json
-nano config.json
+# 若已有旧版 config.json，会自动拆分为两份配置
+node scripts/migrate-config.mjs   # 可选，deploy 时也会执行
+cp config.undercut.example.json config.undercut.json
+cp config.company.example.json config.company.json
+nano config.undercut.json
+nano config.company.json
 chmod +x deploy-ecs.sh
 ./deploy-ecs.sh
 ```
 
-`torn-toolbox-desktop` 的 `notify.qq.token` 必须与 `qq-bot` 的 `server.notifyToken` 一致。`server.host` 用 **127.0.0.1**（由 portal 对外）。
+- **压价助手** `torn-undercut` → `127.0.0.1:8790` → portal `/torn-toolbox/undercut/`
+- **公司监听** `torn-company` → `127.0.0.1:8791` → portal `/torn-toolbox/company/`
+- portal 卡片 **Torn 工具箱** → `/torn-toolbox/` 导航页（两个子入口）
+- 两份配置的 `notify.qq.token` 均与 `qq-bot` 的 `server.notifyToken` 一致
+- `adminToken` 需写入 portal 对应 hidden proxy 配置（见 `portal/config.ecs.example.json`）
 
 ### 配置 portal（:80 服务导航，推荐）
 
@@ -64,7 +72,7 @@ chmod +x deploy-ecs.sh
 ### 安全组
 
 - **只需放行 80**（portal 统一入口）
-- 8790 / 6099 / 8787 均绑定 `127.0.0.1`，不应对外开放
+- 8790 / 8791 / 6099 / 8787 均绑定 `127.0.0.1`，不应对外开放
 
 访问：
 
@@ -72,7 +80,7 @@ chmod +x deploy-ecs.sh
 http://123.56.235.12/
 ```
 
-登录后所有服务从卡片进入（Torn 压价、NapCat 等），**无需记端口**。
+登录后点击 **Torn 工具箱**，再进入压价助手或公司监听。**无需记端口**。
 
 ---
 
@@ -95,6 +103,14 @@ chmod +x scripts/ecs-update.sh   # 只需第一次
 ```
 
 一条命令完成：`git pull` → `npm install` → `pm2 restart`。
+
+按需只重启部分服务：
+
+```bash
+./scripts/ecs-update.sh --only undercut      # 仅压价助手
+./scripts/ecs-update.sh --only company       # 仅公司监听
+./scripts/ecs-update.sh --only qq-bot,napcat # 多个用逗号分隔
+```
 
 若 `git pull` 因 GitHub 超时失败，脚本会自动重试 3 次。
 

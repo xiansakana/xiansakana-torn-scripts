@@ -1,15 +1,27 @@
 #!/bin/bash
 # 在 ECS 上更新代码并重启服务（仓库根目录的 scripts/ 下运行）
-# 用法: ./scripts/ecs-update.sh [--skip-pull]
+# 用法: ./scripts/ecs-update.sh [--skip-pull] [--only undercut,company,qq-bot,portal,napcat]
 set -e
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 SKIP_PULL=false
-if [[ "${1:-}" == "--skip-pull" ]]; then
-    SKIP_PULL=true
-fi
+ONLY=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-pull) SKIP_PULL=true; shift ;;
+        --only) ONLY="$2"; shift 2 ;;
+        *) echo "未知参数: $1"; exit 1 ;;
+    esac
+done
+
+should_run() {
+    local name="$1"
+    [[ -z "$ONLY" ]] && return 0
+    echo ",$ONLY," | grep -q ",$name,"
+}
 
 git_pull_with_retry() {
     local attempt max=3 delay=5
@@ -30,7 +42,6 @@ git_pull_with_retry() {
     echo "  1. 稍后再在 ECS 上重试: ./scripts/ecs-update.sh"
     echo "  2. 本机执行: scripts/ecs-deploy-from-local.ps1（跳过 ECS git pull）"
     echo "  3. 改用 SSH 拉取: git remote set-url origin git@github.com:xiansakana/xiansakana-torn-scripts.git"
-    echo "     或使用 Gitee 镜像（见 DEPLOY-ECS.md）"
     return 1
 }
 
@@ -40,32 +51,63 @@ else
     echo "==> 跳过 git pull（代码已由本机同步）"
 fi
 
-echo "==> qq-bot"
-cd "$ROOT/qq-bot"
-npm install --production
-if pm2 describe qq-bot >/dev/null 2>&1; then
-    pm2 restart qq-bot
-else
-    echo "qq-bot 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+if should_run qq-bot; then
+    echo "==> qq-bot"
+    cd "$ROOT/qq-bot"
+    npm install --production
+    if pm2 describe qq-bot >/dev/null 2>&1; then
+        pm2 restart qq-bot
+    else
+        echo "qq-bot 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+    fi
 fi
 
-echo "==> torn-toolbox-desktop"
-cd "$ROOT/torn-toolbox-desktop"
-npm install --production
-if pm2 describe torn-toolbox >/dev/null 2>&1; then
-    pm2 restart torn-toolbox
-else
-    echo "torn-toolbox 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+if should_run undercut || should_run company; then
+    echo "==> torn-toolbox-desktop"
+    cd "$ROOT/torn-toolbox-desktop"
+    npm install --production
+    if [ -f config.json ] && { [ ! -f config.undercut.json ] || [ ! -f config.company.json ]; }; then
+        node scripts/migrate-config.mjs
+    fi
 fi
 
-echo "==> portal"
-cd "$ROOT/portal"
-if pm2 describe portal >/dev/null 2>&1; then
-    pm2 restart portal
-else
-    echo "portal 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+if should_run undercut; then
+    if pm2 describe torn-undercut >/dev/null 2>&1; then
+        pm2 restart torn-undercut
+    elif pm2 describe torn-toolbox >/dev/null 2>&1; then
+        echo "检测到旧进程 torn-toolbox，请运行 torn-toolbox-desktop/deploy-ecs.sh 完成迁移"
+    else
+        echo "torn-undercut 未运行，请先配置 config.undercut.json 并执行 ./deploy-ecs.sh"
+    fi
 fi
 
-pm2 save
+if should_run company; then
+    if pm2 describe torn-company >/dev/null 2>&1; then
+        pm2 restart torn-company
+    else
+        echo "torn-company 未运行，请先配置 config.company.json 并执行 ./deploy-ecs.sh"
+    fi
+fi
+
+if should_run portal; then
+    echo "==> portal"
+    cd "$ROOT/portal"
+    if pm2 describe portal >/dev/null 2>&1; then
+        pm2 restart portal
+    else
+        echo "portal 未运行，请先配置 config.json 并执行 ./deploy-ecs.sh"
+    fi
+fi
+
+if should_run napcat; then
+    echo "==> napcat"
+    if [ -d /opt/napcat ]; then
+        cd /opt/napcat && docker compose restart napcat
+    else
+        echo "未找到 /opt/napcat，跳过 NapCat 重启"
+    fi
+fi
+
+pm2 save 2>/dev/null || true
 echo "==> 更新完成"
-pm2 status
+pm2 status 2>/dev/null || true

@@ -1,5 +1,5 @@
 #!/bin/bash
-# torn-toolbox-desktop 阿里云 ECS 部署（压价/公司监听 Web 配置页，默认 :8790）
+# torn-toolbox-desktop 阿里云 ECS 部署（压价 :8790 + 公司 :8791 独立进程）
 set -e
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -20,37 +20,44 @@ npm install --production
 echo "==> 安装 pm2..."
 npm install -g pm2
 
-if [ ! -f config.json ]; then
-    cp config.ecs.example.json config.json
-    echo "已创建 config.json，请编辑后重新运行本脚本"
-    echo "  nano config.json"
-    echo "必改项:"
-    echo "  - tornApiKey"
-    echo "  - server.adminToken（访问配置页的密码）"
-    echo "  - notify.qq.token（与 /opt/qq-bot 的 notifyToken 一致）"
+if [ -f config.json ] && { [ ! -f config.undercut.json ] || [ ! -f config.company.json ]; }; then
+    echo "==> 迁移旧版 config.json ..."
+    node scripts/migrate-config.mjs
+fi
+
+if [ ! -f config.undercut.json ]; then
+    cp config.undercut.example.json config.undercut.json
+    echo "已创建 config.undercut.json，请编辑后重新运行"
     exit 1
 fi
 
-if grep -q '"host": "127.0.0.1"' config.json; then
-    echo "提示: server.host 为 127.0.0.1，仅本机/portal(:80) 可访问（推荐）"
+if [ ! -f config.company.json ]; then
+    cp config.company.example.json config.company.json
+    echo "已创建 config.company.json，请编辑后重新运行"
+    exit 1
 fi
 
-echo "==> 启动 torn-toolbox-desktop..."
+echo "==> 启动 torn-undercut (:8790) ..."
+pm2 delete torn-undercut 2>/dev/null || true
 pm2 delete torn-toolbox 2>/dev/null || true
 pm2 delete torn-desktop 2>/dev/null || true
-pm2 start src/server.js --name torn-toolbox
+pm2 start src/server-undercut.js --name torn-undercut
+
+echo "==> 启动 torn-company (:8791) ..."
+pm2 delete torn-company 2>/dev/null || true
+pm2 start src/server-company.js --name torn-company
+
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null || true
 
-echo "==> 本机健康检查..."
+echo "==> 健康检查..."
 sleep 1
-curl -sf -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8790/ || true
-echo "==> 监听地址（推荐 127.0.0.1:8790，由 portal :80 对外）"
-ss -tlnp | grep 8790 || netstat -tlnp 2>/dev/null | grep 8790 || true
+curl -sf -o /dev/null -w "undercut HTTP %{http_code}\n" http://127.0.0.1:8790/ || true
+curl -sf -o /dev/null -w "company HTTP %{http_code}\n" http://127.0.0.1:8791/ || true
 
 PUBLIC_IP="$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo '你的公网IP')"
 echo ""
 echo "部署完成。"
-echo "1. 推荐通过 portal 访问: http://${PUBLIC_IP}/ → Torn 压价助手"
-echo "2. 若未部署 portal，可安全组放行 8790 直连（不推荐）"
-echo "3. QQ 通知走本机 qq-bot (127.0.0.1:8787)，无需对外开放 8787"
+echo "通过 portal 访问: http://${PUBLIC_IP}/ → Torn 工具箱"
+echo "  - 压价助手: /torn-toolbox/undercut/"
+echo "  - 公司监听: /torn-toolbox/company/"

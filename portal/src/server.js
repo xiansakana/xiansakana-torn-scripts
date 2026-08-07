@@ -73,7 +73,9 @@ function requireAuth(req, res) {
 }
 
 function publicServices() {
-    return (config.services || []).map(function(service) {
+    return (config.services || [])
+        .filter(function(service) { return !service.hidden; })
+        .map(function(service) {
         var item = {
             id: service.id,
             title: service.title,
@@ -82,7 +84,7 @@ function publicServices() {
             icon: service.icon || '📦',
             newTab: !!service.newTab
         };
-        if (service.type === 'proxy') {
+        if (service.type === 'proxy' || service.type === 'hub') {
             item.path = getServiceEntryHref(service);
         } else if (service.type === 'external') {
             item.url = service.url;
@@ -187,6 +189,13 @@ var server = http.createServer(async function(req, res) {
     }
 
     if (handleProxyRoute(req, res)) return;
+
+    var hubPath = '/torn-toolbox';
+    if (url.pathname === hubPath || url.pathname === hubPath + '/' || url.pathname === hubPath + '/index.html') {
+        var hubSession = requireAuth(req, res);
+        if (!hubSession) return;
+        if (serveStatic(path.join(PUBLIC_DIR, 'torn-toolbox', 'index.html'), res)) return;
+    }
 
     if (url.pathname === '/' || url.pathname === '/index.html') {
         var homeSession = requireAuth(req, res);

@@ -11,13 +11,34 @@
   "services": [
     {
       "id": "torn-toolbox",
-      "title": "Torn 压价助手",
-      "description": "Bazaar / Item Market 压价监听与公司申请提醒",
-      "type": "proxy",
+      "title": "Torn 工具箱",
+      "description": "压价助手与公司申请监听（独立进程）",
+      "type": "hub",
       "path": "/torn-toolbox",
       "entryPath": "/",
-      "internalUrl": "http://127.0.0.1:8790",
       "icon": "📊"
+    },
+    {
+      "id": "torn-undercut",
+      "title": "压价助手",
+      "hidden": true,
+      "type": "proxy",
+      "path": "/torn-toolbox/undercut",
+      "entryPath": "/",
+      "internalUrl": "http://127.0.0.1:8790",
+      "adminToken": "与 config.undercut.json 的 adminToken 相同",
+      "icon": "📉"
+    },
+    {
+      "id": "torn-company",
+      "title": "公司监听",
+      "hidden": true,
+      "type": "proxy",
+      "path": "/torn-toolbox/company",
+      "entryPath": "/",
+      "internalUrl": "http://127.0.0.1:8791",
+      "adminToken": "与 config.company.json 的 adminToken 相同",
+      "icon": "🏢"
     },
     {
       "id": "napcat",
