@@ -155,11 +155,13 @@ export function proxyWebSocket(service, req, socket, head) {
 }
 
 export function findProxyService(services, pathname) {
-    return (services || []).find(function(service) {
+    var matches = (services || []).filter(function(service) {
         return service.type === 'proxy'
             && service.path
             && (pathname === service.path || pathname.startsWith(service.path + '/'));
     });
+    if (!matches.length) return null;
+    return matches.sort(function(a, b) { return b.path.length - a.path.length; })[0];
 }
 
 function findNapcatService(services) {

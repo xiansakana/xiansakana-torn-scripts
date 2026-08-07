@@ -8,6 +8,7 @@ import {
     fetchWeav3rBazaarLowest
 } from './torn-api.js';
 import { notifyUndercutAlert } from './notify.js';
+import { normalizeUndercutWatchers } from './watchers.js';
 
 export class UndercutMonitor extends EventEmitter {
     constructor(getConfig) {
@@ -17,29 +18,69 @@ export class UndercutMonitor extends EventEmitter {
         this.running = false;
         this.checks = 0;
         this.alerts = 0;
-        this.activeKeys = new Set();
-        this.alertMap = new Map();
-        this.playerCache = {};
+        this.applications = [];
         this.nextScanAt = null;
         this.statusMessage = '';
+        this.watcherStates = new Map();
+    }
+
+    ensureWatcherState(id) {
+        if (!this.watcherStates.has(id)) {
+            this.watcherStates.set(id, {
+                playerCache: {},
+                activeKeys: new Set(),
+                alertMap: new Map(),
+                checks: 0,
+                alerts: 0,
+                lastError: ''
+            });
+        }
+        return this.watcherStates.get(id);
+    }
+
+    getWatchers() {
+        return normalizeUndercutWatchers(this.getConfig());
+    }
+
+    getAllAlerts() {
+        var list = [];
+        this.watcherStates.forEach(function(state, watcherId) {
+            state.alertMap.forEach(function(alert) {
+                list.push({ ...alert, watcherId: watcherId });
+            });
+        });
+        list.sort(function(a, b) { return (b.detectedAt || 0) - (a.detectedAt || 0); });
+        return list.slice(0, 100);
     }
 
     getState() {
+        var watchers = this.getWatchers().map(function(w) {
+            var st = this.watcherStates.get(w.id) || {};
+            return {
+                id: w.id,
+                label: w.label,
+                checks: st.checks || 0,
+                alerts: st.alerts || 0,
+                lastError: st.lastError || ''
+            };
+        }.bind(this));
         return {
             running: this.running,
             checks: this.checks,
             alerts: this.alerts,
             nextScanAt: this.nextScanAt,
             statusMessage: this.statusMessage,
-            alertsList: Array.from(this.alertMap.values())
+            alertsList: this.getAllAlerts(),
+            watchers: watchers
         };
     }
 
     start() {
         if (this.running) return;
-        var config = this.getConfig();
-        if (!config.tornApiKey) throw new Error('请填写 Torn API Key');
-        var interval = Math.max(30, Number(config.undercut?.intervalSeconds) || 60);
+        if (!this.getWatchers().length) {
+            throw new Error('请至少添加一个监听账号并填写 API Key');
+        }
+        var interval = Math.max(30, Number(this.getConfig().undercut?.intervalSeconds) || 60);
         this.running = true;
         this.emit('state', this.getState());
         this.runOnce().catch(function(err) {
@@ -69,40 +110,33 @@ export class UndercutMonitor extends EventEmitter {
 
     buildAlertText(alert) {
         var tag = alert.source === 'Bazaar' ? '[Bazaar]' : '[Item Market]';
+        var prefix = alert.watcherLabel ? '[' + alert.watcherLabel + '] ' : '';
         if (alert.source === 'Bazaar' && alert.undercutBy) {
-            return tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
+            return prefix + tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
                 + alert.undercutBy.playerName + '（ID ' + alert.undercutBy.playerId + '）'
                 + ' 压至 ' + formatMoney(alert.compareLow);
         }
         var lowLabel = alert.source === 'Bazaar' ? '巴扎最低' : '市场最低';
-        return tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
+        return prefix + tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
             + lowLabel + ' ' + formatMoney(alert.compareLow);
     }
 
-    async runOnce() {
-        var config = this.getConfig();
-        var apiKey = config.tornApiKey;
-        var undercut = config.undercut || {};
-        var watchBazaar = undercut.watchBazaar !== false;
-        var watchItemMarket = undercut.watchItemMarket !== false;
+    async scanWatcher(config, watcher) {
+        var state = this.ensureWatcherState(watcher.id);
+        var apiKey = watcher.apiKey;
+        var watchBazaar = watcher.watchBazaar !== false;
+        var watchItemMarket = watcher.watchItemMarket !== false;
         var selectedIds = new Set();
-        (undercut.selectedItems || []).forEach(function(item) {
+        (watcher.selectedItems || []).forEach(function(item) {
             selectedIds.add(Number(item.id));
         });
-        if (!selectedIds.size && undercut.selectedItemIds) {
-            undercut.selectedItemIds.forEach(function(id) { selectedIds.add(Number(id)); });
-        }
 
         if (!watchBazaar && !watchItemMarket) {
-            this.stop();
-            throw new Error('请至少选择一种监听范围');
+            throw new Error(watcher.label + ': 请至少选择一种监听范围');
         }
 
-        this.checks++;
-        this.statusMessage = '正在获取你的货物...';
-        this.emit('state', this.getState());
-
-        var myPlayerId = watchBazaar ? await fetchMyPlayerId(apiKey, this.playerCache) : null;
+        state.checks++;
+        var myPlayerId = watchBazaar ? await fetchMyPlayerId(apiKey, state.playerCache) : null;
         var listings = [];
 
         if (watchItemMarket) {
@@ -141,12 +175,9 @@ export class UndercutMonitor extends EventEmitter {
         }
 
         if (!listings.length) {
-            this.activeKeys.clear();
-            this.alertMap.clear();
-            this.statusMessage = selectedIds.size ? '指定物品当前没有在售货物' : '当前没有在售货物';
-            this.emit('alerts', []);
-            this.emit('state', this.getState());
-            return;
+            state.activeKeys.clear();
+            state.alertMap.clear();
+            return { newAlerts: [], undercutCount: 0 };
         }
 
         var imPriceCache = {};
@@ -157,9 +188,6 @@ export class UndercutMonitor extends EventEmitter {
         for (var i = 0; i < listings.length; i++) {
             var entry = listings[i];
             if (!entry.itemId) continue;
-            this.statusMessage = '正在扫描' + (entry.kind === 'bazaar' ? '巴扎' : '市场')
-                + '价格（' + (i + 1) + '/' + listings.length + '）...';
-            this.emit('state', this.getState());
 
             var compareLow = null;
             var undercutBy = null;
@@ -183,36 +211,73 @@ export class UndercutMonitor extends EventEmitter {
                     myPrice: entry.myPrice,
                     compareLow: compareLow,
                     undercutBy: undercutBy,
-                    detectedAt: Math.floor(Date.now() / 1000)
+                    detectedAt: Math.floor(Date.now() / 1000),
+                    watcherId: watcher.id,
+                    watcherLabel: watcher.label
                 };
-                if (!this.activeKeys.has(entry.key)) newAlerts.push(alert);
-                this.alertMap.set(entry.key, alert);
+                if (!state.activeKeys.has(entry.key)) newAlerts.push(alert);
+                state.alertMap.set(entry.key, alert);
             }
 
             if (i < listings.length - 1) await sleep(API_DELAY_MS);
         }
 
-        this.activeKeys.forEach(function(key) {
-            if (!currentUndercuts.has(key)) this.alertMap.delete(key);
-        }.bind(this));
-        this.activeKeys = currentUndercuts;
+        state.activeKeys.forEach(function(key) {
+            if (!currentUndercuts.has(key)) state.alertMap.delete(key);
+        });
+        state.activeKeys = currentUndercuts;
 
         if (newAlerts.length) {
+            state.alerts += newAlerts.length;
             this.alerts += newAlerts.length;
             for (var j = 0; j < newAlerts.length; j++) {
                 var text = this.buildAlertText(newAlerts[j]);
-                await notifyUndercutAlert(config.notify, newAlerts[j], text);
+                await notifyUndercutAlert(config.notify, watcher.notify, newAlerts[j], text);
             }
         }
 
-        this.statusMessage = currentUndercuts.size
-            ? '发现 ' + currentUndercuts.size + ' 个货物被压价'
-            : '所有货物均为对应渠道最低价';
-        this.emit('alerts', Array.from(this.alertMap.values()));
+        return { newAlerts: newAlerts, undercutCount: currentUndercuts.size };
+    }
+
+    async runOnce() {
+        var config = this.getConfig();
+        var watchers = this.getWatchers();
+        if (!watchers.length) {
+            throw new Error('请至少添加一个监听账号并填写 API Key');
+        }
+
+        this.checks++;
+        this.statusMessage = '正在扫描 ' + watchers.length + ' 个账号...';
+        this.emit('state', this.getState());
+
+        var totalUndercuts = 0;
+        var totalNew = 0;
+
+        for (var i = 0; i < watchers.length; i++) {
+            var watcher = watchers[i];
+            try {
+                this.statusMessage = '正在扫描 ' + watcher.label + '（' + (i + 1) + '/' + watchers.length + '）...';
+                this.emit('state', this.getState());
+                var result = await this.scanWatcher(config, watcher);
+                totalUndercuts += result.undercutCount;
+                totalNew += result.newAlerts.length;
+                this.ensureWatcherState(watcher.id).lastError = '';
+            } catch (err) {
+                this.ensureWatcherState(watcher.id).lastError = err.message;
+                this.emit('error', watcher.label + ': ' + err.message);
+            }
+        }
+
+        this.statusMessage = totalNew
+            ? '发现 ' + totalNew + ' 个新压价提醒'
+            : (totalUndercuts
+                ? '共 ' + totalUndercuts + ' 个货物被压价'
+                : '所有账号货物均为对应渠道最低价');
+        this.emit('alerts', this.getAllAlerts());
         this.emit('state', this.getState());
 
         if (this.running) {
-            var interval = Math.max(30, Number(undercut.intervalSeconds) || 60);
+            var interval = Math.max(30, Number(config.undercut?.intervalSeconds) || 60);
             this.scheduleNext(interval);
         }
     }

@@ -1,7 +1,12 @@
 # 本机推送代码到 ECS（GitHub pull 超时时使用）
-# 用法: 在本机仓库根目录执行
-#   git push   # 先推到 GitHub 备份
+# 用法:
+#   git push
 #   .\scripts\ecs-deploy-from-local.ps1
+#   .\scripts\ecs-deploy-from-local.ps1 -Only undercut,company
+
+param(
+    [string]$Only = ""
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -23,7 +28,12 @@ foreach ($dir in $Dirs) {
     scp -i $Key -r $localPath "${Host}:${RemoteRoot}/"
 }
 
+$onlyArg = ""
+if ($Only) {
+    $onlyArg = " --only $Only"
+}
+
 Write-Host "==> 重启服务（跳过 ECS git pull）"
-ssh -i $Key $Host "cd $RemoteRoot && bash scripts/ecs-update.sh --skip-pull"
+ssh -i $Key $Host "cd $RemoteRoot && bash scripts/ecs-update.sh --skip-pull$onlyArg"
 
 Write-Host "==> 部署完成"

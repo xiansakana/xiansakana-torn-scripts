@@ -1,6 +1,6 @@
 import notifier from 'node-notifier';
 import { sanitizeQqText, formatApplicationSummary } from './utils.js';
-import { normalizeQqTargets } from './company-watchers.js';
+import { normalizeQqTargets } from './watchers.js';
 
 export async function sendDesktopNotification(title, text) {
     return new Promise(function(resolve) {
@@ -59,16 +59,16 @@ export async function sendQqNotification(qqConfig, text) {
     }
 }
 
-export async function notifyUndercutAlert(notifyConfig, alert, alertText) {
+export async function notifyUndercutAlert(globalNotify, watcherNotify, alert, alertText) {
     var sourceLabel = alert.source === 'Bazaar' ? 'Bazaar' : 'Item Market';
     var title = 'Torn 压价 · ' + sourceLabel;
     var tasks = [];
-    if (notifyConfig?.desktop) {
+    if (watcherNotify?.desktop !== false && globalNotify?.desktop) {
         tasks.push(sendDesktopNotification(title, alertText));
     }
-    if (notifyConfig?.qq?.enabled) {
-        tasks.push(sendQqNotification(notifyConfig.qq, '[Torn压价] ' + alertText));
-    }
+    buildWatcherQqConfigs(globalNotify, watcherNotify).forEach(function(qqConfig) {
+        tasks.push(sendQqNotification(qqConfig, '[Torn压价] ' + alertText));
+    });
     await Promise.allSettled(tasks).then(function(results) {
         results.forEach(function(result) {
             if (result.status === 'rejected') {
@@ -76,6 +76,34 @@ export async function notifyUndercutAlert(notifyConfig, alert, alertText) {
             }
         });
     });
+}
+
+export async function testUndercutWatcherNotify(globalNotify, watcher) {
+    var label = watcher.label || '测试';
+    var watcherNotify = watcher.notify || {};
+    if (!watcherNotify.qq?.enabled) {
+        throw new Error('请先启用该账号的 QQ 通知');
+    }
+    var configs = buildWatcherQqConfigs(globalNotify, watcherNotify);
+    if (!configs.length) {
+        throw new Error('请至少添加一个有效的 QQ 通知方式（群号或私聊 QQ 号）');
+    }
+    var text = '[' + label + '] 测试通知 - 压价助手配置正常';
+    var sent = [];
+    var errors = [];
+    for (var i = 0; i < configs.length; i++) {
+        var cfg = configs[i];
+        try {
+            await sendQqNotification(cfg, '[Torn压价] ' + text);
+            sent.push(describeQqTarget(cfg));
+        } catch (err) {
+            errors.push(describeQqTarget(cfg) + ': ' + err.message);
+        }
+    }
+    if (!sent.length) {
+        throw new Error(errors.join('；'));
+    }
+    return { targets: sent, errors: errors.length ? errors : undefined };
 }
 
 function formatCompanyApplicationText(label, newApps) {

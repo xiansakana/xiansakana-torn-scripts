@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { fetchCompanyApplications } from './torn-api.js';
 import { notifyCompanyApplications } from './notify.js';
-import { normalizeCompanyWatchers } from './company-watchers.js';
+import { normalizeCompanyWatchers } from './watchers.js';
 
 export class CompanyMonitor extends EventEmitter {
     constructor(getConfig) {
