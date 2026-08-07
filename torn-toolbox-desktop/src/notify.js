@@ -39,7 +39,13 @@ export async function notifyUndercutAlert(notifyConfig, alert, alertText) {
     if (notifyConfig?.qq?.enabled) {
         tasks.push(sendQqNotification(notifyConfig.qq, '[Torn压价] ' + alertText));
     }
-    await Promise.allSettled(tasks);
+    await Promise.allSettled(tasks).then(function(results) {
+        results.forEach(function(result) {
+            if (result.status === 'rejected') {
+                console.error('[notify]', result.reason?.message || result.reason);
+            }
+        });
+    });
 }
 
 export async function notifyCompanyApplications(notifyConfig, count) {
@@ -51,5 +57,11 @@ export async function notifyCompanyApplications(notifyConfig, count) {
     if (notifyConfig?.qq?.enabled) {
         tasks.push(sendQqNotification(notifyConfig.qq, '[Torn公司] ' + text));
     }
-    await Promise.allSettled(tasks);
+    await Promise.allSettled(tasks).then(function(results) {
+        results.forEach(function(result) {
+            if (result.status === 'rejected') {
+                console.error('[notify]', result.reason?.message || result.reason);
+            }
+        });
+    });
 }
