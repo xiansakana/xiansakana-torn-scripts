@@ -1,0 +1,16 @@
+{
+  "name": "torn-toolbox-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Torn 工具箱本地版：无需浏览器即可运行压价助手、公司监听等功能",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "node-notifier": "^10.0.1"
+  }
+}

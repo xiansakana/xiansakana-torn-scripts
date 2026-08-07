@@ -1,0 +1,28 @@
+{
+  "tornApiKey": "填写你的Torn API Key",
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8790,
+    "openBrowser": false,
+    "adminToken": "换成强随机字符串-用于访问配置页"
+  },
+  "undercut": {
+    "intervalSeconds": 30,
+    "watchBazaar": true,
+    "watchItemMarket": true,
+    "autoStart": true,
+    "selectedItems": []
+  },
+  "company": {
+    "intervalSeconds": 30,
+    "autoStart": false
+  },
+  "notify": {
+    "desktop": false,
+    "qq": {
+      "enabled": true,
+      "url": "http://127.0.0.1:8787/notify",
+      "token": "与qq-bot的server.notifyToken相同"
+    }
+  }
+}

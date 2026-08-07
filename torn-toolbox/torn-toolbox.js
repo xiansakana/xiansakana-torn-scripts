@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 工具箱
 // @namespace    http://tampermonkey.net/
-// @version      1.2.6
+// @version      1.2.7
 // @description  整合购买均价、出售均价、攻击筛选、压价助手、公司监听的统一工具箱
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
@@ -1408,18 +1408,19 @@
                 undercutState.alerts += newAlerts.length;
                 document.getElementById('uc-alerts').textContent = undercutState.alerts;
                 newAlerts.forEach(function(alert) {
+                    var tag = alert.source === 'Bazaar' ? '[Bazaar]' : '[Item Market]';
                     var notifyText;
                     if (alert.source === 'Bazaar' && alert.undercutBy) {
-                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
+                        notifyText = tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
                             + alert.undercutBy.playerName + '（ID ' + alert.undercutBy.playerId + '）'
                             + ' 压至 ' + formatMoney(alert.compareLow);
                     } else {
                         var lowLabel = alert.source === 'Bazaar' ? '巴扎最低' : '市场最低';
-                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
+                        notifyText = tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
                             + lowLabel + ' ' + formatMoney(alert.compareLow);
                     }
                     GM_notification({
-                        title: 'Torn 压价提醒',
+                        title: 'Torn 压价 · ' + (alert.source === 'Bazaar' ? 'Bazaar' : 'Item Market'),
                         text: notifyText,
                         timeout: 15000,
                         onclick: function() { window.focus(); }
