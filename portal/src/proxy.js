@@ -51,10 +51,17 @@ function rewriteLocation(location, service) {
 
 function rewriteProxiedBody(text, service) {
     var prefix = service.path.replace(/\/$/, '');
-    return String(text)
+    var out = String(text)
         .replace(/https?:\/\/127\.0\.0\.1:6099/g, prefix)
         .replace(/https?:\/\/[^"'\s]+:6099/g, prefix)
         .replace(/(["'])\/webui/g, '$1' + prefix + '/webui');
+    if (prefix.startsWith('/torn-toolbox/')) {
+        out = out
+            .replace(/(["'])\/style\.css/g, '$1' + prefix + '/style.css')
+            .replace(/(["'])\/shared\//g, '$1' + prefix + '/shared/')
+            .replace(/(["'])\/app\.js/g, '$1' + prefix + '/app.js');
+    }
+    return out;
 }
 
 function injectPortalShell(html, service) {
@@ -68,7 +75,9 @@ function injectPortalShell(html, service) {
         return html.replace('<head>', '<head>' + baseTag);
     }
     var title = service.title || '服务';
-    var bar = '<div class="portal-topbar"><a href="/">← 服务导航</a><span>' + title + '</span></div>';
+    var bar = '<div class="portal-topbar"><a href="/">← 服务导航</a>'
+        + (service.path.startsWith('/torn-toolbox/') ? '<a href="/torn-toolbox/">← Torn 工具箱</a>' : '')
+        + '<span>' + title + '</span></div>';
     var style = '<style>.portal-topbar{display:flex;align-items:center;gap:16px;padding:10px 16px;background:#1a1d24;border-bottom:1px solid #2a3140;font-family:system-ui,sans-serif}.portal-topbar a{color:#7eb6ff;text-decoration:none}.portal-topbar span{color:#9aa4b2;font-size:14px}</style>';
     return html
         .replace('<head>', '<head>' + baseTag + style)
