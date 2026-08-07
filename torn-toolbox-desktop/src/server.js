@@ -97,7 +97,15 @@ function parseCookies(req) {
     return out;
 }
 
+function isLocalRequest(req) {
+    var ip = req.socket && req.socket.remoteAddress;
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+}
+
 function authorize(req, res, url) {
+    var bindHost = config.server?.host || '127.0.0.1';
+    if (bindHost === '127.0.0.1' && isLocalRequest(req)) return true;
+
     var adminToken = getAdminToken();
     if (!adminToken) return true;
     var queryToken = url.searchParams.get('token') || '';

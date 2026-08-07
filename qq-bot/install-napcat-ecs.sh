@@ -33,7 +33,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
       - "127.0.0.1:3001:3001"
-      - "6099:6099"
+      - "127.0.0.1:6099:6099"
     volumes:
       - ./config:/app/napcat/config
       - ./ntqq:/app/.config/QQ

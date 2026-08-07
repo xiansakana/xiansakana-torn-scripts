@@ -12,7 +12,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"   # HTTP API，仅本机（qq-bot 调用）
       - "127.0.0.1:3001:3001"   # WebSocket（可选）
-      - "6099:6099"             # WebUI，首次扫码登录
+      - "127.0.0.1:6099:6099"   # WebUI，仅 portal :80 转发
     volumes:
       - ./config:/app/napcat/config
       - ./ntqq:/app/.config/QQ
