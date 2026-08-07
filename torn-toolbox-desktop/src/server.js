@@ -126,7 +126,15 @@ async function handleApi(req, res) {
                 hasApiKey: !!config.tornApiKey,
                 undercut: config.undercut,
                 company: config.company,
-                notify: config.notify
+                notify: {
+                    desktop: config.notify?.desktop,
+                    qq: {
+                        enabled: config.notify?.qq?.enabled,
+                        url: config.notify?.qq?.url,
+                        hasToken: !!(config.notify?.qq?.token),
+                        token: config.notify?.qq?.token ? '***' + config.notify.qq.token.slice(-4) : ''
+                    }
+                }
             },
             undercut: undercutMonitor.getState(),
             company: companyMonitor.getState()
@@ -180,7 +188,16 @@ async function handleApi(req, res) {
             }
             if (body.undercut) config.undercut = { ...config.undercut, ...body.undercut };
             if (body.company) config.company = { ...config.company, ...body.company };
-            if (body.notify) config.notify = { ...config.notify, ...body.notify };
+            if (body.notify) {
+                var prevQq = config.notify?.qq || {};
+                config.notify = { ...config.notify, ...body.notify };
+                if (body.notify.qq) {
+                    config.notify.qq = { ...prevQq, ...body.notify.qq };
+                    if (!body.notify.qq.token || !String(body.notify.qq.token).trim()) {
+                        config.notify.qq.token = prevQq.token || '';
+                    }
+                }
+            }
             saveConfig(config);
             return json(res, 200, { ok: true });
         } catch (err) {

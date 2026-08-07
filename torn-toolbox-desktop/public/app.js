@@ -206,7 +206,13 @@ async function loadState() {
         $('notify-desktop').checked = cfg.notify.desktop !== false;
         $('notify-qq').checked = cfg.notify.qq?.enabled !== false;
         $('qq-url').value = cfg.notify.qq?.url || '';
-        $('qq-token').value = cfg.notify.qq?.token || '';
+        if (cfg.notify.qq?.hasToken) {
+            $('qq-token').value = '';
+            $('qq-token').placeholder = '已保存 ' + (cfg.notify.qq.token || '***');
+        } else {
+            $('qq-token').value = '';
+            $('qq-token').placeholder = '与 qq-bot notifyToken 一致';
+        }
     }
     if (cfg.hasApiKey) $('api-key').placeholder = '已保存 ' + cfg.tornApiKey;
     updateUndercutState(data.undercut);
@@ -236,7 +242,7 @@ async function saveConfig() {
                 qq: {
                     enabled: $('notify-qq').checked,
                     url: $('qq-url').value.trim(),
-                    token: $('qq-token').value.trim()
+                    token: $('qq-token').value.trim() || undefined
                 }
             }
         })
