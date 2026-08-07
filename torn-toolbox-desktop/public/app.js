@@ -622,7 +622,7 @@ $('co-watchers').addEventListener('click', function(e) {
         }
         return;
     }
-};
+});
 
 $('co-watchers').addEventListener('change', function(e) {
     if (e.target.dataset.field !== 'targetType') return;
