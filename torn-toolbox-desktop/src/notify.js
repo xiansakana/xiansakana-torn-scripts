@@ -99,3 +99,33 @@ export async function notifyCompanyApplications(globalNotify, watcherNotify, lab
         });
     });
 }
+
+function describeQqTarget(qqConfig) {
+    if (qqConfig.type === 'private') {
+        return '私聊 ' + qqConfig.userId;
+    }
+    if (qqConfig.atUserId) {
+        return '群 ' + qqConfig.groupId + ' @' + qqConfig.atUserId;
+    }
+    return '群 ' + qqConfig.groupId;
+}
+
+export async function testCompanyWatcherNotify(globalNotify, watcher) {
+    var label = watcher.label || '测试';
+    var watcherNotify = watcher.notify || {};
+    if (!watcherNotify.qq?.enabled) {
+        throw new Error('请先启用该账号的 QQ 通知');
+    }
+    var qqConfig = buildWatcherQqConfig(globalNotify, watcherNotify);
+    if (!qqConfig?.url) {
+        throw new Error('请先在全局设置填写 QQ 推送地址');
+    }
+    if (qqConfig.type === 'private') {
+        if (!qqConfig.userId) throw new Error('私聊模式请填写 QQ 号');
+    } else if (!qqConfig.groupId) {
+        throw new Error('群聊模式请填写群号');
+    }
+    var text = '[' + label + '] 测试通知 - 公司监听配置正常';
+    await sendQqNotification(qqConfig, '[Torn公司] ' + text);
+    return { target: describeQqTarget(qqConfig) };
+}

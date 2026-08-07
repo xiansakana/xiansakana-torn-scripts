@@ -7,6 +7,7 @@ import { loadConfig, saveConfig } from './config.js';
 import { UndercutMonitor } from './undercut-monitor.js';
 import { CompanyMonitor } from './company-monitor.js';
 import { fetchItems } from './torn-api.js';
+import { testCompanyWatcherNotify } from './notify.js';
 import { maskWatcherForClient, mergeWatcherConfig } from './company-watchers.js';
 import { normalizeItems } from './utils.js';
 
@@ -244,6 +245,25 @@ async function handleApi(req, res) {
     if (req.method === 'POST' && url.pathname === '/api/company/stop') {
         companyMonitor.stop();
         return json(res, 200, { ok: true });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/company/test-notify') {
+        try {
+            var testBody = await readJson(req);
+            var testNotify = {
+                desktop: config.notify?.desktop,
+                qq: {
+                    url: testBody.notify?.qq?.url || config.notify?.qq?.url,
+                    token: (testBody.notify?.qq?.token && String(testBody.notify.qq.token).trim())
+                        ? testBody.notify.qq.token.trim()
+                        : (config.notify?.qq?.token || '')
+                }
+            };
+            var testResult = await testCompanyWatcherNotify(testNotify, testBody.watcher || {});
+            return json(res, 200, { ok: true, ...testResult });
+        } catch (err) {
+            return json(res, 400, { ok: false, error: err.message });
+        }
     }
 
     return json(res, 404, { ok: false, error: 'Not Found' });
