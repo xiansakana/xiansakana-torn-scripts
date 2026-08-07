@@ -15,7 +15,24 @@
   },
   "company": {
     "intervalSeconds": 30,
-    "autoStart": false
+    "autoStart": false,
+    "watchers": [
+      {
+        "id": "main-company",
+        "label": "主公司",
+        "enabled": true,
+        "apiKey": "填写你的Torn API Key",
+        "notify": {
+          "desktop": false,
+          "qq": {
+            "enabled": true,
+            "type": "group",
+            "groupId": "263171957",
+            "atUserId": "2461298052"
+          }
+        }
+      }
+    ]
   },
   "notify": {
     "desktop": false,

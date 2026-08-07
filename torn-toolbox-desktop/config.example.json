@@ -13,7 +13,24 @@
     "selectedItems": []
   },
   "company": {
-    "intervalSeconds": 30
+    "intervalSeconds": 30,
+    "watchers": [
+      {
+        "id": "company-a",
+        "label": "公司 A",
+        "enabled": true,
+        "apiKey": "",
+        "notify": {
+          "desktop": true,
+          "qq": {
+            "enabled": true,
+            "type": "group",
+            "groupId": "263171957",
+            "atUserId": "2461298052"
+          }
+        }
+      }
+    ]
   },
   "notify": {
     "desktop": true,
