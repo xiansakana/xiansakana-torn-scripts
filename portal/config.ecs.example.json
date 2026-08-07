@@ -1,0 +1,32 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 80
+  },
+  "auth": {
+    "username": "admin",
+    "password": "换成强密码",
+    "sessionSecret": "换成随机字符串"
+  },
+  "services": [
+    {
+      "id": "torn-toolbox",
+      "title": "Torn 压价助手",
+      "description": "Bazaar / Item Market 压价监听与公司申请提醒",
+      "type": "proxy",
+      "path": "/torn-toolbox",
+      "internalUrl": "http://127.0.0.1:8790",
+      "adminToken": "与torn-toolbox的adminToken相同，留空则不需要",
+      "icon": "📊"
+    },
+    {
+      "id": "napcat-webui",
+      "title": "NapCat 管理",
+      "description": "QQ 机器人 WebUI",
+      "type": "external",
+      "url": "http://123.56.235.12:6099/webui?token=你的WebUI_token",
+      "icon": "💬",
+      "newTab": true
+    }
+  ]
+}
