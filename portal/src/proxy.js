@@ -34,6 +34,29 @@ export function buildTargetUrl(service, reqUrl) {
     return target;
 }
 
+function rewriteLocation(location, service) {
+    if (!location) return location;
+    var prefix = service.path.replace(/\/$/, '');
+    try {
+        var loc = new URL(location, service.internalUrl);
+        var base = new URL(service.internalUrl);
+        if (loc.origin === base.origin) {
+            return prefix + loc.pathname + loc.search + loc.hash;
+        }
+    } catch (e) { /* ignore */ }
+    return String(location)
+        .replace(/https?:\/\/127\.0\.0\.1:6099/g, prefix)
+        .replace(/https?:\/\/[^/]+:6099/g, prefix);
+}
+
+function rewriteProxiedBody(text, service) {
+    var prefix = service.path.replace(/\/$/, '');
+    return String(text)
+        .replace(/https?:\/\/127\.0\.0\.1:6099/g, prefix)
+        .replace(/https?:\/\/[^"'\s]+:6099/g, prefix)
+        .replace(/(["'])\/webui/g, '$1' + prefix + '/webui');
+}
+
 function injectPortalShell(html, service) {
     if (!html.includes('<body')) return html;
     var baseTag = '';
@@ -64,11 +87,22 @@ export async function proxyHttpRequest(service, req, res) {
         }, function(upstreamRes) {
             var headers = Object.assign({}, upstreamRes.headers);
             delete headers['content-security-policy'];
+            if (headers.location) {
+                headers.location = rewriteLocation(headers.location, service);
+            }
             var ctype = String(upstreamRes.headers['content-type'] || '');
             var isHtml = ctype.includes('text/html') && upstreamRes.statusCode === 200;
+            var isJs = (ctype.includes('javascript') || ctype.includes('text/js')) && upstreamRes.statusCode === 200;
             var isStream = ctype.includes('text/event-stream');
 
-            if (isStream || !isHtml) {
+            if (isStream) {
+                res.writeHead(upstreamRes.statusCode, headers);
+                upstreamRes.pipe(res);
+                upstreamRes.on('end', resolve);
+                return;
+            }
+
+            if (!isHtml && !isJs) {
                 res.writeHead(upstreamRes.statusCode, headers);
                 upstreamRes.pipe(res);
                 upstreamRes.on('end', resolve);
@@ -79,10 +113,11 @@ export async function proxyHttpRequest(service, req, res) {
             upstreamRes.on('data', function(chunk) { chunks.push(chunk); });
             upstreamRes.on('end', function() {
                 var buf = Buffer.concat(chunks);
-                var html = injectPortalShell(buf.toString('utf8'), service);
-                headers['content-length'] = Buffer.byteLength(html, 'utf8');
+                var text = rewriteProxiedBody(buf.toString('utf8'), service);
+                if (isHtml) text = injectPortalShell(text, service);
+                headers['content-length'] = Buffer.byteLength(text, 'utf8');
                 res.writeHead(upstreamRes.statusCode, headers);
-                res.end(html);
+                res.end(text);
                 resolve();
             });
         });

@@ -22,10 +22,10 @@ napcat_token = ''
 if webui_cfg_path.exists():
     napcat_token = json.loads(webui_cfg_path.read_text(encoding='utf-8')).get('token', '')
 
+portal = json.loads(example_path.read_text(encoding='utf-8'))
 if portal_cfg_path.exists():
-    portal = json.loads(portal_cfg_path.read_text(encoding='utf-8'))
-else:
-    portal = json.loads(example_path.read_text(encoding='utf-8'))
+    old = json.loads(portal_cfg_path.read_text(encoding='utf-8'))
+    portal['auth'] = old.get('auth', portal['auth'])
 
 portal['auth']['username'] = 'admin'
 portal['auth']['password'] = login_password
@@ -39,6 +39,6 @@ for svc in portal.get('services', []):
         svc['adminToken'] = napcat_token
 
 portal_cfg_path.write_text(json.dumps(portal, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
-print('portal config written')
+print('portal config written (from ecs example template)')
 print('login user:', portal['auth']['username'])
 print('login pass:', portal['auth']['password'])
