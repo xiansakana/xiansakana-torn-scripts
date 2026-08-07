@@ -1,5 +1,6 @@
 var selectedItems = new Map();
 var itemsCache = [];
+var companyWatchers = [];
 
 function $(id) { return document.getElementById(id); }
 
@@ -57,7 +58,7 @@ function renderCompanyApps(apps) {
     apps.forEach(function(app) {
         var div = document.createElement('div');
         div.className = 'item company';
-        div.innerHTML = '<h4>新申请 #' + app.id + '</h4>'
+        div.innerHTML = '<h4>新申请 #' + app.id + (app.watcherLabel ? ' · ' + app.watcherLabel : '') + '</h4>'
             + '<p>申请人：' + app.name + ' (ID ' + app.userId + ') · Lv ' + (app.level || '?') + '</p>'
             + '<p>状态：' + (app.status || '未知') + '</p>'
             + '<p>过期：' + new Date(app.expires * 1000).toLocaleString('zh-CN') + '</p>'
@@ -90,6 +91,122 @@ function updateCompanyState(state) {
     $('co-apps').textContent = state.apps || 0;
     $('co-next').textContent = formatNext(state.nextScanAt);
     $('co-message').textContent = state.statusMessage || '';
+    renderWatcherMeta(state.watchers || []);
+}
+
+function defaultWatcher(label) {
+    return {
+        id: 'w-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        label: label || '新账号',
+        enabled: true,
+        apiKey: '',
+        hasApiKey: false,
+        notify: {
+            desktop: true,
+            qq: {
+                enabled: true,
+                type: 'group',
+                groupId: '',
+                atUserId: '',
+                userId: ''
+            }
+        }
+    };
+}
+
+function renderWatcherMeta(watchers) {
+    document.querySelectorAll('[data-watcher-meta]').forEach(function(node) {
+        var id = node.dataset.watcherMeta;
+        var info = watchers.find(function(w) { return w.id === id; });
+        if (!info) {
+            node.textContent = '';
+            return;
+        }
+        var parts = ['已检查 ' + (info.checks || 0) + ' 次', '申请 ' + (info.apps || 0) + ' 个'];
+        if (info.lastError) parts.push('错误: ' + info.lastError);
+        node.textContent = parts.join(' · ');
+    });
+}
+
+function toggleWatcherTargetFields(card, type) {
+    var isGroup = type === 'group';
+    card.querySelector('[data-field="groupId"]').closest('.field').hidden = !isGroup;
+    card.querySelector('[data-field="atUserId"]').closest('.field').hidden = !isGroup;
+    card.querySelector('[data-field="userId"]').closest('.field').hidden = isGroup;
+}
+
+function renderCompanyWatchers() {
+    var container = $('co-watchers');
+    container.innerHTML = '';
+    if (!companyWatchers.length) {
+        container.innerHTML = '<p class="hint">暂无监听账号，点击「添加账号」开始配置</p>';
+        return;
+    }
+
+    companyWatchers.forEach(function(watcher, index) {
+        var card = document.createElement('div');
+        card.className = 'watcher-card';
+        card.dataset.id = watcher.id;
+        card.innerHTML = ''
+            + '<div class="watcher-card-head">'
+            + '<h3>账号 ' + (index + 1) + '</h3>'
+            + '<div class="watcher-actions">'
+            + '<label><input type="checkbox" data-field="enabled"' + (watcher.enabled !== false ? ' checked' : '') + '> 启用</label>'
+            + '<button type="button" class="btn small danger" data-action="remove">删除</button>'
+            + '</div>'
+            + '</div>'
+            + '<div class="watcher-grid">'
+            + '<div class="field"><label>名称</label><input type="text" data-field="label" value="' + escapeHtml(watcher.label || '') + '"></div>'
+            + '<div class="field"><label>Torn API Key</label><input type="password" data-field="apiKey" placeholder="' + (watcher.hasApiKey ? '已保存 ' + escapeHtml(watcher.apiKey || '***') : '填写后保存') + '"></div>'
+            + '<div class="field full checks">'
+            + '<label><input type="checkbox" data-field="notifyDesktop"' + (watcher.notify?.desktop !== false ? ' checked' : '') + '> 桌面通知</label>'
+            + '<label><input type="checkbox" data-field="qqEnabled"' + (watcher.notify?.qq?.enabled !== false ? ' checked' : '') + '> QQ 通知</label>'
+            + '</div>'
+            + '<div class="field"><label>QQ 目标</label><select data-field="qqType">'
+            + '<option value="group"' + ((watcher.notify?.qq?.type || 'group') === 'group' ? ' selected' : '') + '>群聊</option>'
+            + '<option value="private"' + (watcher.notify?.qq?.type === 'private' ? ' selected' : '') + '>私聊</option>'
+            + '</select></div>'
+            + '<div class="field"><label>群号</label><input type="text" data-field="groupId" value="' + escapeHtml(watcher.notify?.qq?.groupId || '') + '"></div>'
+            + '<div class="field"><label>@ QQ 号（留空则直接发送）</label><input type="text" data-field="atUserId" value="' + escapeHtml(watcher.notify?.qq?.atUserId || '') + '"></div>'
+            + '<div class="field"><label>私聊 QQ 号</label><input type="text" data-field="userId" value="' + escapeHtml(watcher.notify?.qq?.userId || '') + '"></div>'
+            + '</div>'
+            + '<div class="watcher-meta" data-watcher-meta="' + watcher.id + '"></div>';
+        container.appendChild(card);
+        toggleWatcherTargetFields(card, watcher.notify?.qq?.type || 'group');
+    });
+}
+
+function escapeHtml(text) {
+    return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function collectCompanyWatchersFromDom() {
+    return Array.from(document.querySelectorAll('.watcher-card')).map(function(card) {
+        var id = card.dataset.id;
+        var existing = companyWatchers.find(function(w) { return w.id === id; }) || {};
+        return {
+            id: id,
+            label: card.querySelector('[data-field="label"]').value.trim() || '未命名',
+            enabled: card.querySelector('[data-field="enabled"]').checked,
+            apiKey: card.querySelector('[data-field="apiKey"]').value.trim() || undefined,
+            notify: {
+                desktop: card.querySelector('[data-field="notifyDesktop"]').checked,
+                qq: {
+                    enabled: card.querySelector('[data-field="qqEnabled"]').checked,
+                    type: card.querySelector('[data-field="qqType"]').value,
+                    groupId: card.querySelector('[data-field="groupId"]').value.trim(),
+                    atUserId: card.querySelector('[data-field="atUserId"]').value.trim(),
+                    userId: card.querySelector('[data-field="userId"]').value.trim()
+                }
+            },
+            hasApiKey: existing.hasApiKey,
+            apiKeyMask: existing.apiKey
+        };
+    });
 }
 
 function renderChips() {
@@ -201,7 +318,48 @@ async function loadState() {
         }
         renderChips();
     }
-    if (cfg.company) $('co-interval').value = cfg.company.intervalSeconds || 30;
+    if (cfg.company) {
+        $('co-interval').value = cfg.company.intervalSeconds || 30;
+        companyWatchers = (cfg.company.watchers || []).map(function(watcher) {
+            return {
+                id: watcher.id,
+                label: watcher.label || '未命名',
+                enabled: watcher.enabled !== false,
+                apiKey: watcher.apiKey || '',
+                hasApiKey: !!watcher.hasApiKey,
+                notify: {
+                    desktop: watcher.notify?.desktop !== false,
+                    qq: {
+                        enabled: watcher.notify?.qq?.enabled !== false,
+                        type: watcher.notify?.qq?.type || 'group',
+                        groupId: watcher.notify?.qq?.groupId || '',
+                        atUserId: watcher.notify?.qq?.atUserId || '',
+                        userId: watcher.notify?.qq?.userId || ''
+                    }
+                }
+            };
+        });
+        if (!companyWatchers.length && cfg.hasApiKey) {
+            companyWatchers = [{
+                id: 'default',
+                label: '默认',
+                enabled: true,
+                apiKey: cfg.tornApiKey || '',
+                hasApiKey: true,
+                notify: {
+                    desktop: cfg.notify?.desktop !== false,
+                    qq: {
+                        enabled: cfg.notify?.qq?.enabled !== false,
+                        type: 'group',
+                        groupId: '',
+                        atUserId: '',
+                        userId: ''
+                    }
+                }
+            }];
+        }
+        renderCompanyWatchers();
+    }
     if (cfg.notify) {
         $('notify-desktop').checked = cfg.notify.desktop !== false;
         $('notify-qq').checked = cfg.notify.qq?.enabled !== false;
@@ -219,6 +377,7 @@ async function loadState() {
     updateCompanyState(data.company);
     renderUndercutAlerts(data.undercut.alertsList || []);
     renderCompanyApps(data.company.applications || []);
+    renderWatcherMeta(data.company.watchers || []);
 }
 
 async function saveConfig() {
@@ -236,7 +395,10 @@ async function saveConfig() {
                     return { id: entry[0], name: entry[1] };
                 })
             },
-            company: { intervalSeconds: Number($('co-interval').value) || 30 },
+            company: {
+                intervalSeconds: Number($('co-interval').value) || 30,
+                watchers: collectCompanyWatchersFromDom()
+            },
             notify: {
                 desktop: $('notify-desktop').checked,
                 qq: {
@@ -305,6 +467,30 @@ $('uc-chips').addEventListener('click', function(e) {
     if ($('uc-select-drop').classList.contains('show')) {
         renderItemList($('uc-select-search').value);
     }
+});
+
+$('co-add-watcher').addEventListener('click', function() {
+    companyWatchers.push(defaultWatcher('账号 ' + (companyWatchers.length + 1)));
+    renderCompanyWatchers();
+});
+
+$('co-watchers').addEventListener('click', function(e) {
+    var card = e.target.closest('.watcher-card');
+    if (!card) return;
+    if (e.target.dataset.action === 'remove') {
+        companyWatchers = companyWatchers.filter(function(w) { return w.id !== card.dataset.id; });
+        renderCompanyWatchers();
+        return;
+    }
+    if (e.target.dataset.field === 'qqType') {
+        toggleWatcherTargetFields(card, e.target.value);
+    }
+});
+
+$('co-watchers').addEventListener('change', function(e) {
+    if (e.target.dataset.field !== 'qqType') return;
+    var card = e.target.closest('.watcher-card');
+    if (card) toggleWatcherTargetFields(card, e.target.value);
 });
 
 setupItemSelect();

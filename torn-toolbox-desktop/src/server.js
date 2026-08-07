@@ -7,6 +7,7 @@ import { loadConfig, saveConfig } from './config.js';
 import { UndercutMonitor } from './undercut-monitor.js';
 import { CompanyMonitor } from './company-monitor.js';
 import { fetchItems } from './torn-api.js';
+import { maskWatcherForClient, mergeWatcherConfig } from './company-watchers.js';
 import { normalizeItems } from './utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -133,7 +134,10 @@ async function handleApi(req, res) {
                 tornApiKey: config.tornApiKey ? '***' + config.tornApiKey.slice(-4) : '',
                 hasApiKey: !!config.tornApiKey,
                 undercut: config.undercut,
-                company: config.company,
+                company: {
+                    intervalSeconds: config.company?.intervalSeconds,
+                    watchers: (config.company?.watchers || []).map(maskWatcherForClient)
+                },
                 notify: {
                     desktop: config.notify?.desktop,
                     qq: {
@@ -195,7 +199,16 @@ async function handleApi(req, res) {
                 itemsCache = null;
             }
             if (body.undercut) config.undercut = { ...config.undercut, ...body.undercut };
-            if (body.company) config.company = { ...config.company, ...body.company };
+            if (body.company) {
+                config.company = { ...config.company, ...body.company };
+                if (Array.isArray(body.company.watchers)) {
+                    var prevWatchers = config.company.watchers || [];
+                    config.company.watchers = body.company.watchers.map(function(watcher, index) {
+                        var prev = prevWatchers.find(function(item) { return item.id === watcher.id; }) || prevWatchers[index] || {};
+                        return mergeWatcherConfig(watcher, prev, config.tornApiKey);
+                    });
+                }
+            }
             if (body.notify) {
                 var prevQq = config.notify?.qq || {};
                 config.notify = { ...config.notify, ...body.notify };
@@ -258,7 +271,8 @@ server.listen(port, host, function() {
         try { undercutMonitor.start(); }
         catch (err) { console.error('压价助手自动启动失败:', err.message); }
     }
-    if (config.tornApiKey && config.company && config.company.autoStart) {
+    if ((config.tornApiKey || (config.company?.watchers || []).some(function(w) { return w.apiKey; }))
+        && config.company && config.company.autoStart) {
         try { companyMonitor.start(); }
         catch (err) { console.error('公司监听自动启动失败:', err.message); }
     }
