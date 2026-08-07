@@ -4,7 +4,7 @@
     "host": "127.0.0.1",
     "port": 8790,
     "openBrowser": false,
-    "adminToken": "与portal代理使用的token相同，留空则不需要"
+    "adminToken": ""
   },
   "undercut": {
     "intervalSeconds": 30,

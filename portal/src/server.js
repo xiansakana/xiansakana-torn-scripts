@@ -9,7 +9,7 @@ import {
     getSession,
     verifyLogin
 } from './auth.js';
-import { findProxyService, proxyHttpRequest } from './proxy.js';
+import { findProxyService, getServiceEntryHref, proxyHttpRequest, proxyWebSocket } from './proxy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '../public');
@@ -74,16 +74,20 @@ function requireAuth(req, res) {
 
 function publicServices() {
     return (config.services || []).map(function(service) {
-        return {
+        var item = {
             id: service.id,
             title: service.title,
             description: service.description,
             type: service.type,
-            path: service.type === 'proxy' ? service.path : undefined,
-            url: service.type === 'external' ? service.url : undefined,
             icon: service.icon || '📦',
             newTab: !!service.newTab
         };
+        if (service.type === 'proxy') {
+            item.path = getServiceEntryHref(service);
+        } else if (service.type === 'external') {
+            item.url = service.url;
+        }
+        return item;
     });
 }
 
@@ -158,6 +162,20 @@ var server = http.createServer(async function(req, res) {
     if (staticPath.startsWith(PUBLIC_DIR) && serveStatic(staticPath, res)) return;
 
     json(res, 404, { ok: false, error: 'Not Found' });
+});
+
+server.on('upgrade', function(req, socket, head) {
+    var url = new URL(req.url, 'http://127.0.0.1');
+    if (!getSession(req, getSessionSecret())) {
+        socket.destroy();
+        return;
+    }
+    var wsService = findProxyService(config.services, url.pathname);
+    if (!wsService) {
+        socket.destroy();
+        return;
+    }
+    proxyWebSocket(wsService, req, socket, head);
 });
 
 var host = config.server?.host || '127.0.0.1';

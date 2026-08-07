@@ -15,18 +15,21 @@
       "description": "Bazaar / Item Market 压价监听与公司申请提醒",
       "type": "proxy",
       "path": "/torn-toolbox",
+      "entryPath": "/",
       "internalUrl": "http://127.0.0.1:8790",
-      "adminToken": "",
       "icon": "📊"
     },
     {
-      "id": "napcat-webui",
+      "id": "napcat",
       "title": "NapCat 管理",
-      "description": "QQ 机器人 WebUI（扫码、网络配置）",
-      "type": "external",
-      "url": "http://127.0.0.1:6099/webui",
-      "icon": "💬",
-      "newTab": true
+      "description": "QQ 机器人 WebUI",
+      "type": "proxy",
+      "path": "/napcat",
+      "entryPath": "/webui",
+      "internalUrl": "http://127.0.0.1:6099",
+      "adminToken": "",
+      "injectBar": false,
+      "icon": "💬"
     }
   ]
 }

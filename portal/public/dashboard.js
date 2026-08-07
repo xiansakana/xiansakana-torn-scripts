@@ -15,8 +15,8 @@ function renderServices(services) {
     services.forEach(function(service) {
         var card = document.createElement('a');
         card.className = 'service-card';
-        var href = service.type === 'proxy' ? service.path + '/' : service.url;
-        card.href = href || '#';
+        var href = service.path || service.url || '#';
+        card.href = href;
         if (service.newTab) {
             card.target = '_blank';
             card.rel = 'noopener noreferrer';

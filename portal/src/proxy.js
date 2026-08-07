@@ -1,9 +1,10 @@
 import http from 'node:http';
 import https from 'node:https';
+import net from 'node:net';
 
 function pickHeaders(reqHeaders, extra) {
     var out = {};
-    ['content-type', 'authorization', 'accept', 'accept-language', 'cache-control'].forEach(function(key) {
+    ['content-type', 'authorization', 'accept', 'accept-language', 'cache-control', 'sec-websocket-key', 'sec-websocket-version', 'sec-websocket-extensions'].forEach(function(key) {
         var val = reqHeaders[key];
         if (val) out[key] = val;
     });
@@ -20,7 +21,7 @@ function readBody(req) {
     });
 }
 
-function buildTargetUrl(service, reqUrl) {
+export function buildTargetUrl(service, reqUrl) {
     var base = new URL(service.internalUrl);
     var prefix = service.path.replace(/\/$/, '');
     var url = new URL(reqUrl, 'http://127.0.0.1');
@@ -33,11 +34,19 @@ function buildTargetUrl(service, reqUrl) {
     return target;
 }
 
-function injectPortalBar(html, servicePath) {
+function injectPortalShell(html, service) {
     if (!html.includes('<body')) return html;
-    var bar = '<div class="portal-topbar"><a href="/">← 服务导航</a><span>Torn 工具箱</span></div>';
+    var baseTag = '';
+    if (service.injectBase !== false) {
+        baseTag = '<base href="' + service.path.replace(/\/$/, '') + '/">';
+    }
+    if (service.injectBar === false) {
+        if (!baseTag) return html;
+        return html.replace('<head>', '<head>' + baseTag);
+    }
+    var title = service.title || '服务';
+    var bar = '<div class="portal-topbar"><a href="/">← 服务导航</a><span>' + title + '</span></div>';
     var style = '<style>.portal-topbar{display:flex;align-items:center;gap:16px;padding:10px 16px;background:#1a1d24;border-bottom:1px solid #2a3140;font-family:system-ui,sans-serif}.portal-topbar a{color:#7eb6ff;text-decoration:none}.portal-topbar span{color:#9aa4b2;font-size:14px}</style>';
-    var baseTag = '<base href="' + servicePath.replace(/\/$/, '') + '/">';
     return html
         .replace('<head>', '<head>' + baseTag + style)
         .replace(/<body([^>]*)>/, '<body$1>' + bar);
@@ -59,14 +68,7 @@ export async function proxyHttpRequest(service, req, res) {
             var isHtml = ctype.includes('text/html') && upstreamRes.statusCode === 200;
             var isStream = ctype.includes('text/event-stream');
 
-            if (isStream) {
-                res.writeHead(upstreamRes.statusCode, headers);
-                upstreamRes.pipe(res);
-                upstreamRes.on('end', resolve);
-                return;
-            }
-
-            if (!isHtml) {
+            if (isStream || !isHtml) {
                 res.writeHead(upstreamRes.statusCode, headers);
                 upstreamRes.pipe(res);
                 upstreamRes.on('end', resolve);
@@ -77,7 +79,7 @@ export async function proxyHttpRequest(service, req, res) {
             upstreamRes.on('data', function(chunk) { chunks.push(chunk); });
             upstreamRes.on('end', function() {
                 var buf = Buffer.concat(chunks);
-                var html = injectPortalBar(buf.toString('utf8'), service.path);
+                var html = injectPortalShell(buf.toString('utf8'), service);
                 headers['content-length'] = Buffer.byteLength(html, 'utf8');
                 res.writeHead(upstreamRes.statusCode, headers);
                 res.end(html);
@@ -96,10 +98,38 @@ export async function proxyHttpRequest(service, req, res) {
     });
 }
 
+export function proxyWebSocket(service, req, socket, head) {
+    var target = buildTargetUrl(service, req.url);
+    var port = Number(target.port) || (target.protocol === 'https:' ? 443 : 80);
+    var proxySocket = net.connect(port, target.hostname, function() {
+        var lines = [req.method + ' ' + target.pathname + target.search + ' HTTP/' + req.httpVersion];
+        var headers = Object.assign({}, req.headers, { host: target.host });
+        Object.keys(headers).forEach(function(key) {
+            var val = headers[key];
+            if (val == null) return;
+            if (Array.isArray(val)) val.forEach(function(v) { lines.push(key + ': ' + v); });
+            else lines.push(key + ': ' + val);
+        });
+        proxySocket.write(lines.join('\r\n') + '\r\n\r\n');
+        if (head && head.length) proxySocket.write(head);
+        proxySocket.pipe(socket);
+        socket.pipe(proxySocket);
+    });
+    proxySocket.on('error', function() { socket.destroy(); });
+    socket.on('error', function() { proxySocket.destroy(); });
+}
+
 export function findProxyService(services, pathname) {
     return (services || []).find(function(service) {
         return service.type === 'proxy'
             && service.path
             && (pathname === service.path || pathname.startsWith(service.path + '/'));
     });
+}
+
+export function getServiceEntryHref(service) {
+    var base = service.path.replace(/\/$/, '');
+    var entry = service.entryPath || '/';
+    if (!entry.startsWith('/')) entry = '/' + entry;
+    return base + entry;
 }
