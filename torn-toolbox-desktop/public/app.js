@@ -152,6 +152,7 @@ function renderCompanyWatchers() {
             + '<h3>账号 ' + (index + 1) + '</h3>'
             + '<div class="watcher-actions">'
             + '<label><input type="checkbox" data-field="enabled"' + (watcher.enabled !== false ? ' checked' : '') + '> 启用</label>'
+            + '<button type="button" class="btn small" data-action="test">测试通知</button>'
             + '<button type="button" class="btn small danger" data-action="remove">删除</button>'
             + '</div>'
             + '</div>'
@@ -184,29 +185,68 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;');
 }
 
+function collectWatcherFromCard(card) {
+    return {
+        label: card.querySelector('[data-field="label"]').value.trim() || '未命名',
+        notify: {
+            desktop: card.querySelector('[data-field="notifyDesktop"]').checked,
+            qq: {
+                enabled: card.querySelector('[data-field="qqEnabled"]').checked,
+                type: card.querySelector('[data-field="qqType"]').value,
+                groupId: card.querySelector('[data-field="groupId"]').value.trim(),
+                atUserId: card.querySelector('[data-field="atUserId"]').value.trim(),
+                userId: card.querySelector('[data-field="userId"]').value.trim()
+            }
+        }
+    };
+}
+
 function collectCompanyWatchersFromDom() {
     return Array.from(document.querySelectorAll('.watcher-card')).map(function(card) {
         var id = card.dataset.id;
         var existing = companyWatchers.find(function(w) { return w.id === id; }) || {};
+        var watcher = collectWatcherFromCard(card);
         return {
             id: id,
-            label: card.querySelector('[data-field="label"]').value.trim() || '未命名',
+            label: watcher.label,
             enabled: card.querySelector('[data-field="enabled"]').checked,
             apiKey: card.querySelector('[data-field="apiKey"]').value.trim() || undefined,
-            notify: {
-                desktop: card.querySelector('[data-field="notifyDesktop"]').checked,
-                qq: {
-                    enabled: card.querySelector('[data-field="qqEnabled"]').checked,
-                    type: card.querySelector('[data-field="qqType"]').value,
-                    groupId: card.querySelector('[data-field="groupId"]').value.trim(),
-                    atUserId: card.querySelector('[data-field="atUserId"]').value.trim(),
-                    userId: card.querySelector('[data-field="userId"]').value.trim()
-                }
-            },
+            notify: watcher.notify,
             hasApiKey: existing.hasApiKey,
             apiKeyMask: existing.apiKey
         };
     });
+}
+
+async function testWatcherNotify(card) {
+    var btn = card.querySelector('[data-action="test"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '发送中...';
+    }
+    try {
+        var result = await api('company/test-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                watcher: collectWatcherFromCard(card),
+                notify: {
+                    qq: {
+                        url: $('qq-url').value.trim(),
+                        token: $('qq-token').value.trim() || undefined
+                    }
+                }
+            })
+        });
+        $('co-message').textContent = '测试通知已发送' + (result.target ? ' → ' + result.target : '');
+    } catch (err) {
+        $('co-message').textContent = err.message;
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '测试通知';
+        }
+    }
 }
 
 function renderChips() {
@@ -480,6 +520,10 @@ $('co-watchers').addEventListener('click', function(e) {
     if (e.target.dataset.action === 'remove') {
         companyWatchers = companyWatchers.filter(function(w) { return w.id !== card.dataset.id; });
         renderCompanyWatchers();
+        return;
+    }
+    if (e.target.dataset.action === 'test') {
+        testWatcherNotify(card);
         return;
     }
     if (e.target.dataset.field === 'qqType') {
