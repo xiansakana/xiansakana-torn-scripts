@@ -64,8 +64,8 @@ function updateUndercutState(state) {
     var running = state.running;
     $('uc-start').hidden = running;
     $('uc-stop').hidden = !running;
-    document.querySelectorAll('.watcher-card').forEach(function(card) {
-        card.classList.toggle('disabled-card', running);
+    document.querySelectorAll('.uc-select-wrap').forEach(function(wrap) {
+        wrap.classList.toggle('disabled', running);
     });
     $('uc-status-text').textContent = running ? '● 监听中' : '已停止';
     $('uc-status').classList.toggle('stopped', !running);
@@ -226,7 +226,7 @@ function bindItemSelect(card, watcher) {
 
     display.addEventListener('click', function(e) {
         e.stopPropagation();
-        if (card.closest('.disabled-card')) return;
+        if (wrap.classList.contains('disabled')) return;
         var apiKeyInput = card.querySelector('[data-field="apiKey"]');
         if (!watcher.hasApiKey && !apiKeyInput.value.trim()) {
             $('uc-message').textContent = '请先填写并保存该账号的 API Key';
@@ -409,11 +409,34 @@ $('uc-watchers').addEventListener('click', function(e) {
     }
     if (e.target.dataset.action === 'test') {
         testWatcherNotify(card);
+        return;
+    }
+    if (e.target.dataset.action === 'add-target') {
+        syncUndercutWatchersFromDom();
+        var watcherAdd = undercutWatchers.find(function(w) { return w.id === card.dataset.id; });
+        if (watcherAdd) {
+            watcherAdd.notify.qq.targets.push(WUI.defaultQqTarget());
+            renderUndercutWatchers();
+        }
+        return;
+    }
+    if (e.target.dataset.action === 'remove-target') {
+        syncUndercutWatchersFromDom();
+        var targetRow = e.target.closest('.notify-target');
+        var watcherRm = undercutWatchers.find(function(w) { return w.id === card.dataset.id; });
+        if (watcherRm && targetRow) {
+            watcherRm.notify.qq.targets = watcherRm.notify.qq.targets.filter(function(t) {
+                return t.id !== targetRow.dataset.targetId;
+            });
+            if (!watcherRm.notify.qq.targets.length) {
+                watcherRm.notify.qq.targets.push(WUI.defaultQqTarget());
+            }
+            renderUndercutWatchers();
+        }
     }
 });
 
 WUI.bindTargetTypeChange($('uc-watchers'));
-WUI.handleTargetActions($('uc-watchers'), undercutWatchers, renderUndercutWatchers, syncUndercutWatchersFromDom);
 
 loadState().then(connectEvents).catch(function(err) {
     $('global-status').textContent = err.message;
