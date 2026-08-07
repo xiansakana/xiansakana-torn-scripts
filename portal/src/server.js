@@ -142,6 +142,15 @@ var server = http.createServer(async function(req, res) {
     if (proxyService) {
         var proxySession = requireAuth(req, res);
         if (!proxySession) return;
+        if (proxyService.adminToken && !url.searchParams.get('token')) {
+            var redir = new URL(req.url, 'http://127.0.0.1');
+            redir.searchParams.set('token', proxyService.adminToken);
+            return redirect(res, redir.pathname + redir.search);
+        }
+        if (url.pathname.endsWith('/web_login')) {
+            var entry = new URL(getServiceEntryHref(proxyService) + (proxyService.adminToken ? '?token=' + encodeURIComponent(proxyService.adminToken) : ''), 'http://127.0.0.1');
+            return redirect(res, entry.pathname + entry.search);
+        }
         return proxyHttpRequest(proxyService, req, res);
     }
 
