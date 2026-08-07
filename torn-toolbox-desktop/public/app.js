@@ -586,6 +586,14 @@ $('co-add-watcher').addEventListener('click', function() {
     renderCompanyWatchers();
 });
 
+$('co-save-config').addEventListener('click', function() {
+    saveConfig().then(function() {
+        $('co-message').textContent = '公司监听配置已保存';
+    }).catch(function(err) {
+        $('co-message').textContent = err.message;
+    });
+});
+
 $('co-watchers').addEventListener('click', function(e) {
     var card = e.target.closest('.watcher-card');
     if (!card) return;
