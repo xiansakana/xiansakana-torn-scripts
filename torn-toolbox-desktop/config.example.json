@@ -1,0 +1,26 @@
+{
+  "tornApiKey": "",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8790,
+    "openBrowser": true,
+    "adminToken": ""
+  },
+  "undercut": {
+    "intervalSeconds": 60,
+    "watchBazaar": true,
+    "watchItemMarket": true,
+    "selectedItems": []
+  },
+  "company": {
+    "intervalSeconds": 30
+  },
+  "notify": {
+    "desktop": true,
+    "qq": {
+      "enabled": true,
+      "url": "http://127.0.0.1:8787/notify",
+      "token": "change-me-to-a-long-random-string"
+    }
+  }
+}
