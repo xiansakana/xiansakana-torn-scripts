@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         Torn 工具箱
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
-// @description  整合购买均价、出售均价、攻击筛选、公司监听的统一工具箱
+// @version      1.2.6
+// @description  整合购买均价、出售均价、攻击筛选、压价助手、公司监听的统一工具箱
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
+// @connect      weav3r.dev
 // @grant        GM_addStyle
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_notification
+// @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
 (function() {
@@ -26,6 +28,7 @@
     var itemsCache = [];
     var buySelected = { id: null, name: '' };
     var sellSelected = { id: null, name: '' };
+    var ucSelectedItems = new Map();
     var buyMugStats = { total: 0, matched: 0 };
 
     var companyState = {
@@ -35,6 +38,17 @@
         apps: 0,
         seen: new Set()
     };
+
+    var undercutState = {
+        monitoring: false,
+        timer: null,
+        checks: 0,
+        alerts: 0,
+        activeKeys: new Set(),
+        playerId: null
+    };
+
+    var WEAV3R_MARKETPLACE_URL = 'https://weav3r.dev/api/marketplace/';
 
     GM_addStyle(`
         #ttb-root {
@@ -204,6 +218,7 @@
         .ttb-item.trade { border-left-color: var(--ttb-success); }
         .ttb-item.attack { border-left-color: var(--ttb-danger); }
         .ttb-item.company { border-left-color: var(--ttb-success); animation: ttbIn .25s ease; }
+        .ttb-item.undercut { border-left-color: var(--ttb-warn); animation: ttbIn .25s ease; }
         .ttb-item h4 { margin: 0 0 6px; font-size: 13px; color: var(--ttb-text); font-weight: 600; }
         .ttb-item p { margin: 3px 0; color: #cdd3dc; line-height: 1.5; }
         .ttb-item .ttb-note { color: var(--ttb-muted); font-size: 12px; }
@@ -231,6 +246,21 @@
             border-bottom: 1px solid rgba(255,255,255,.06);
         }
         .ttb-select-opt:hover { background: rgba(110,176,255,.2); color: #fff; }
+        .ttb-select-opt.selected { color: var(--ttb-muted); cursor: default; }
+        .ttb-select-opt.selected:hover { background: transparent; color: var(--ttb-muted); }
+        .ttb-selected-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .ttb-selected-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 8px; border-radius: 999px;
+            background: rgba(110,176,255,.15); color: var(--ttb-text); font-size: 12px;
+        }
+        .ttb-selected-chip button {
+            border: none; background: transparent; color: var(--ttb-muted);
+            cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+        }
+        .ttb-selected-chip button:hover { color: #fff; }
+        .ttb-select-wrap.disabled .ttb-select-display { opacity: .65; cursor: not-allowed; pointer-events: none; }
+        .ttb-field-hint { margin-top: 4px; font-size: 11px; color: var(--ttb-muted); }
         .ttb-status {
             display: none; margin-top: 12px; padding: 10px; border-radius: 8px;
             background: var(--ttb-surface); border: 1px solid var(--ttb-border); font-size: 13px;
@@ -316,6 +346,34 @@
         }
     }
 
+    function gmFetchJson(url, errorPrefix) {
+        return new Promise(function(resolve, reject) {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: url,
+                headers: { Accept: 'application/json' },
+                timeout: 30000,
+                onload: function(resp) {
+                    if (resp.status < 200 || resp.status >= 300) {
+                        reject(new Error((errorPrefix || 'API') + ' 请求失败 (' + resp.status + ')'));
+                        return;
+                    }
+                    try {
+                        resolve(JSON.parse(resp.responseText));
+                    } catch (e) {
+                        reject(new Error((errorPrefix || 'API') + ' 返回数据解析失败'));
+                    }
+                },
+                onerror: function() {
+                    reject(new Error((errorPrefix || 'API') + ' 网络请求失败，请检查 @connect 权限'));
+                },
+                ontimeout: function() {
+                    reject(new Error((errorPrefix || 'API') + ' 请求超时'));
+                }
+            });
+        });
+    }
+
     async function fetchLogsPage(apiKey, logTypes, from, to, onWait) {
         var url = 'https://api.torn.com/user/?selections=log&key=' + encodeURIComponent(apiKey)
             + '&log=' + encodeURIComponent(logTypes) + '&from=' + from + '&to=' + to;
@@ -398,6 +456,91 @@
         search.addEventListener('click', function(e) { e.stopPropagation(); });
     }
 
+    function saveUcSelectedItems() {
+        GM_setValue('ttbUcItems', Array.from(ucSelectedItems.entries()));
+    }
+
+    function loadUcSelectedItems() {
+        ucSelectedItems.clear();
+        (GM_getValue('ttbUcItems', []) || []).forEach(function(pair) {
+            ucSelectedItems.set(Number(pair[0]), pair[1]);
+        });
+    }
+
+    function setupMultiItemSelect(prefix, selectedMap, errEl) {
+        var wrap = document.getElementById(prefix + '-select-wrap');
+        var display = document.getElementById(prefix + '-select-display');
+        var drop = document.getElementById(prefix + '-select-drop');
+        var search = document.getElementById(prefix + '-select-search');
+        var list = document.getElementById(prefix + '-select-list');
+        var chips = document.getElementById(prefix + '-selected');
+
+        function renderChips() {
+            chips.innerHTML = '';
+            if (!selectedMap.size) {
+                display.textContent = itemsCache.length ? '-- 全部物品（点击添加指定物品）--' : '-- 点击加载物品 --';
+                return;
+            }
+            display.textContent = '已选 ' + selectedMap.size + ' 个物品（点击继续添加）';
+            selectedMap.forEach(function(name, id) {
+                var chip = document.createElement('span');
+                chip.className = 'ttb-selected-chip';
+                chip.innerHTML = name + ' <button type="button" title="移除">&times;</button>';
+                chip.querySelector('button').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectedMap.delete(id);
+                    saveUcSelectedItems();
+                    renderChips();
+                    if (drop.classList.contains('show')) render(search.value);
+                });
+                chips.appendChild(chip);
+            });
+        }
+
+        function render(filter) {
+            list.innerHTML = '';
+            var s = (filter || '').toLowerCase();
+            itemsCache.filter(function(i) {
+                return !s || i.name.toLowerCase().includes(s) || String(i.id).includes(s);
+            }).forEach(function(item) {
+                var id = Number(item.id);
+                var div = document.createElement('div');
+                div.className = 'ttb-select-opt' + (selectedMap.has(id) ? ' selected' : '');
+                div.textContent = item.name + ' (ID: ' + item.id + ')' + (selectedMap.has(id) ? ' ✓' : '');
+                if (!selectedMap.has(id)) {
+                    div.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        selectedMap.set(id, item.name);
+                        saveUcSelectedItems();
+                        renderChips();
+                        render(search.value);
+                    });
+                }
+                list.appendChild(div);
+            });
+        }
+
+        display.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (wrap.classList.contains('disabled')) return;
+            if (!itemsCache.length) { loadItemsList(display, errEl).then(function() { renderChips(); }); return; }
+            drop.classList.toggle('show');
+            if (drop.classList.contains('show')) { search.value = ''; render(''); search.focus(); }
+        });
+        search.addEventListener('input', function() { render(search.value); });
+        search.addEventListener('click', function(e) { e.stopPropagation(); });
+        renderChips();
+    }
+
+    function setUcSelectDisabled(disabled) {
+        var wrap = document.getElementById('uc-select-wrap');
+        if (!wrap) return;
+        wrap.classList.toggle('disabled', disabled);
+        wrap.querySelectorAll('.ttb-selected-chip button').forEach(function(btn) {
+            btn.disabled = disabled;
+        });
+    }
+
     // ─── DOM ───
     var root = document.createElement('div');
     root.id = 'ttb-root';
@@ -418,6 +561,7 @@
                 <button class="ttb-tab active" data-tab="buy">购买均价</button>
                 <button class="ttb-tab" data-tab="sell">出售均价</button>
                 <button class="ttb-tab" data-tab="attacks">攻击筛选</button>
+                <button class="ttb-tab" data-tab="undercut" id="ttb-tab-undercut">压价助手</button>
                 <button class="ttb-tab" data-tab="company" id="ttb-tab-company">公司监听</button>
             </div>
             </div>
@@ -508,6 +652,38 @@
                         <div class="ttb-card"><div class="ttb-stat-row"><span class="k">符合条件</span><span class="v" id="atk-count">0</span></div></div>
                         <div id="atk-list"></div>
                     </div>
+                </div>
+                <div class="ttb-pane" data-pane="undercut">
+                    <div class="ttb-field"><label>指定物品（可选）</label>
+                        <div class="ttb-select-wrap" id="uc-select-wrap">
+                            <div class="ttb-select-display" id="uc-select-display">-- 全部物品（点击添加指定物品）--</div>
+                            <div class="ttb-select-drop" id="uc-select-drop">
+                                <input class="ttb-select-search" id="uc-select-search" placeholder="搜索..." />
+                                <div class="ttb-select-list" id="uc-select-list"></div>
+                            </div>
+                        </div>
+                        <div class="ttb-selected-items" id="uc-selected"></div>
+                        <div class="ttb-field-hint">留空监听全部在售货物；Bazaar 对比 Weav3r 巴扎价，Item Market 对比 Torn 市场价</div>
+                    </div>
+                    <div class="ttb-field"><label>监听范围</label>
+                        <div class="ttb-checks">
+                            <label class="ttb-check"><input type="checkbox" id="uc-bazaar" checked /> Bazaar 货物</label>
+                            <label class="ttb-check"><input type="checkbox" id="uc-itemmarket" checked /> Item Market 挂单</label>
+                        </div>
+                    </div>
+                    <div class="ttb-field"><label>扫描间隔（秒）</label><input type="number" id="uc-interval" value="60" min="30" max="600" /></div>
+                    <div class="ttb-btn-row">
+                        <button class="ttb-btn green" id="uc-start">开始监听</button>
+                        <button class="ttb-btn red" id="uc-stop" style="display:none">停止</button>
+                    </div>
+                    <div class="ttb-msg-error" id="uc-error"></div>
+                    <div class="ttb-msg-info" id="uc-info"></div>
+                    <div class="ttb-status" id="uc-status">
+                        <p><strong id="uc-status-text">监听中</strong></p>
+                        <p>下次扫描：<span id="uc-next">--</span></p>
+                        <p>已扫描：<span id="uc-checks">0</span> 次 · 压价提醒：<span id="uc-alerts">0</span> 个</p>
+                    </div>
+                    <div id="uc-list"></div>
                 </div>
                 <div class="ttb-pane" data-pane="company">
                     <div class="ttb-field"><label>检查间隔（秒）</label><input type="number" id="co-interval" value="30" min="10" max="300" /></div>
@@ -610,6 +786,8 @@
 
     setupItemSelect('buy', buySelected, document.getElementById('buy-error'));
     setupItemSelect('sell', sellSelected, document.getElementById('sell-error'));
+    loadUcSelectedItems();
+    setupMultiItemSelect('uc', ucSelectedItems, document.getElementById('uc-error'));
 
     // ─── Buy + Mug ───
     function processPurchaseLogs(logs, targetId) {
@@ -996,15 +1174,306 @@
         finally { btn.disabled = false; btn.textContent = '查询并筛选'; }
     });
 
+    // ─── Shared monitor UI ───
+    function updateMonitorFab() {
+        fab.classList.toggle('monitoring', companyState.monitoring || undercutState.monitoring);
+    }
+
+    function updateApiKeyInputLock() {
+        document.getElementById('ttb-api-key').disabled = companyState.monitoring || undercutState.monitoring;
+    }
+
+    // ─── Undercut monitor ───
+    function setUndercutUI(on) {
+        undercutState.monitoring = on;
+        updateMonitorFab();
+        document.getElementById('ttb-tab-undercut').classList.toggle('active-monitoring', on);
+        document.getElementById('uc-start').style.display = on ? 'none' : 'block';
+        document.getElementById('uc-stop').style.display = on ? 'block' : 'none';
+        document.getElementById('uc-interval').disabled = on;
+        document.getElementById('uc-bazaar').disabled = on;
+        document.getElementById('uc-itemmarket').disabled = on;
+        setUcSelectDisabled(on);
+        updateApiKeyInputLock();
+        var statusEl = document.getElementById('uc-status');
+        statusEl.classList.toggle('show', on || undercutState.checks > 0);
+        statusEl.classList.toggle('stopped', !on && undercutState.checks > 0);
+        document.getElementById('uc-status-text').textContent = on ? '● 监听中' : '已停止监听';
+    }
+
+    async function fetchUserBazaar(apiKey) {
+        var data = await fetchJsonWithRetry(
+            'https://api.torn.com/v2/user/bazaar?key=' + encodeURIComponent(apiKey)
+        );
+        return data.bazaar || [];
+    }
+
+    async function fetchUserItemMarket(apiKey) {
+        var all = [], offset = 0, limit = 100;
+        while (true) {
+            var url = 'https://api.torn.com/v2/user/itemmarket?key=' + encodeURIComponent(apiKey)
+                + '&limit=' + limit + '&offset=' + offset;
+            var data = await fetchJsonWithRetry(url);
+            var rows = data.itemmarket || [];
+            all = all.concat(rows);
+            if (rows.length < limit) break;
+            offset += limit;
+            await sleep(API_DELAY_MS);
+        }
+        return all;
+    }
+
+    async function fetchMyPlayerId(apiKey) {
+        if (undercutState.playerId) return undercutState.playerId;
+        var data = await fetchJsonWithRetry(
+            'https://api.torn.com/v2/user/basic?key=' + encodeURIComponent(apiKey)
+        );
+        var id = toNumber(data.player_id || (data.profile && data.profile.id));
+        if (!id) throw new Error('无法获取玩家 ID');
+        undercutState.playerId = id;
+        return id;
+    }
+
+    async function fetchWeav3rBazaarLowest(itemId, myPlayerId, cache) {
+        if (cache[itemId] !== undefined) return cache[itemId];
+        var data = await gmFetchJson(WEAV3R_MARKETPLACE_URL + itemId + '?limit=100', 'Weav3r 巴扎 API');
+        var listings = data.listings || [];
+        var best = null;
+        listings.forEach(function(row) {
+            if (myPlayerId && toNumber(row.player_id) === myPlayerId) return;
+            var price = toNumber(row.price);
+            if (!price) return;
+            if (!best || price < best.price) {
+                best = {
+                    price: price,
+                    playerId: toNumber(row.player_id),
+                    playerName: row.player_name || '未知'
+                };
+            }
+        });
+        cache[itemId] = best;
+        return best;
+    }
+
+    async function fetchMarketLowestPrice(apiKey, itemId, cache) {
+        if (cache[itemId] !== undefined) return cache[itemId];
+        var data = await fetchJsonWithRetry(
+            'https://api.torn.com/v2/market/' + itemId + '/itemmarket?key=' + encodeURIComponent(apiKey)
+        );
+        var listings = (data.itemmarket && data.itemmarket.listings) || [];
+        var lowest = listings.length ? listings.reduce(function(min, row) {
+            var price = toNumber(row.price);
+            return min === null || price < min ? price : min;
+        }, null) : null;
+        cache[itemId] = lowest;
+        return lowest;
+    }
+
+    function renderUndercutAlert(alert) {
+        var lowLabel = alert.source === 'Bazaar' ? '巴扎最低' : '市场最低';
+        var sellerLine = alert.undercutBy
+            ? '<p>压价者：' + alert.undercutBy.playerName + '（ID：' + alert.undercutBy.playerId + '）</p>'
+            : '';
+        var div = document.createElement('div');
+        div.className = 'ttb-item undercut';
+        div.dataset.ucKey = alert.key;
+        div.innerHTML = '<h4>' + alert.name + '（ID：' + alert.itemId + '）</h4>' +
+            '<p>来源：' + alert.source + '</p>' +
+            '<p>你的价格：' + formatMoney(alert.myPrice) + ' · ' + lowLabel + '：' + formatMoney(alert.compareLow) +
+            ' · 差价：' + formatMoney(alert.myPrice - alert.compareLow) + '</p>' +
+            sellerLine +
+            '<p class="ttb-note">检测时间：' + formatTime(alert.detectedAt) + '</p>';
+        var list = document.getElementById('uc-list');
+        var existing = list.querySelector('[data-uc-key="' + alert.key + '"]');
+        if (existing) list.replaceChild(div, existing);
+        else list.insertBefore(div, list.firstChild);
+    }
+
+    function removeUndercutAlert(key) {
+        var el = document.querySelector('#uc-list [data-uc-key="' + key + '"]');
+        if (el) el.remove();
+    }
+
+    async function ucCheck() {
+        var apiKey = getApiKey();
+        if (!apiKey) { stopUndercutMonitor(); document.getElementById('uc-error').textContent = 'API Key 不能为空'; return; }
+        var watchBazaar = document.getElementById('uc-bazaar').checked;
+        var watchItemMarket = document.getElementById('uc-itemmarket').checked;
+        if (!watchBazaar && !watchItemMarket) {
+            stopUndercutMonitor();
+            document.getElementById('uc-error').textContent = '请至少选择一种监听范围';
+            return;
+        }
+        try {
+            document.getElementById('uc-error').textContent = '';
+            undercutState.checks++;
+            document.getElementById('uc-checks').textContent = undercutState.checks;
+            var info = document.getElementById('uc-info');
+            info.textContent = '正在获取你的货物...';
+            var myPlayerId = watchBazaar ? await fetchMyPlayerId(apiKey) : null;
+            var listings = [];
+            if (watchItemMarket) {
+                var imRows = await fetchUserItemMarket(apiKey);
+                imRows.forEach(function(row) {
+                    var item = row.item || {};
+                    var itemId = item.id || item.ID;
+                    var price = toNumber(row.price);
+                    listings.push({
+                        key: 'im-' + row.id,
+                        itemId: itemId,
+                        name: item.name || item.title || ('Item #' + (itemId || row.id)),
+                        myPrice: price,
+                        source: 'Item Market',
+                        kind: 'im'
+                    });
+                });
+            }
+            if (watchBazaar) {
+                var bazaar = await fetchUserBazaar(apiKey);
+                bazaar.forEach(function(row) {
+                    var itemId = row.ID || row.id;
+                    listings.push({
+                        key: 'bazaar-' + itemId + '-' + toNumber(row.price),
+                        itemId: itemId,
+                        name: row.name || ('Item #' + itemId),
+                        myPrice: toNumber(row.price),
+                        source: 'Bazaar',
+                        kind: 'bazaar'
+                    });
+                });
+            }
+            if (!listings.length) {
+                info.textContent = ucSelectedItems.size
+                    ? '指定物品当前没有在售货物'
+                    : '当前没有在售货物';
+                undercutState.activeKeys.forEach(function(key) { removeUndercutAlert(key); });
+                undercutState.activeKeys.clear();
+                return;
+            }
+            if (ucSelectedItems.size) {
+                listings = listings.filter(function(entry) {
+                    return ucSelectedItems.has(Number(entry.itemId));
+                });
+                if (!listings.length) {
+                    info.textContent = '指定物品当前没有在售货物';
+                    undercutState.activeKeys.forEach(function(key) { removeUndercutAlert(key); });
+                    undercutState.activeKeys.clear();
+                    return;
+                }
+            }
+            var imPriceCache = {};
+            var bazaarPriceCache = {};
+            var currentUndercuts = new Set();
+            var newAlerts = [];
+            for (var i = 0; i < listings.length; i++) {
+                var entry = listings[i];
+                if (!entry.itemId) continue;
+                info.textContent = '正在扫描' + (entry.kind === 'bazaar' ? '巴扎' : '市场') + '价格（' + (i + 1) + '/' + listings.length + '）...';
+                var compareLow = null;
+                var undercutBy = null;
+                if (entry.kind === 'bazaar') {
+                    var bazaarLow = await fetchWeav3rBazaarLowest(entry.itemId, myPlayerId, bazaarPriceCache);
+                    if (bazaarLow) {
+                        compareLow = bazaarLow.price;
+                        undercutBy = { playerId: bazaarLow.playerId, playerName: bazaarLow.playerName };
+                    }
+                } else {
+                    compareLow = await fetchMarketLowestPrice(apiKey, entry.itemId, imPriceCache);
+                }
+                var undercut = compareLow !== null && compareLow < entry.myPrice;
+                if (undercut) {
+                    currentUndercuts.add(entry.key);
+                    var alert = {
+                        key: entry.key,
+                        itemId: entry.itemId,
+                        name: entry.name,
+                        source: entry.source,
+                        myPrice: entry.myPrice,
+                        compareLow: compareLow,
+                        undercutBy: undercutBy,
+                        detectedAt: Math.floor(Date.now() / 1000)
+                    };
+                    if (!undercutState.activeKeys.has(entry.key)) newAlerts.push(alert);
+                    renderUndercutAlert(alert);
+                }
+                if (i < listings.length - 1) await sleep(API_DELAY_MS);
+            }
+            undercutState.activeKeys.forEach(function(key) {
+                if (!currentUndercuts.has(key)) {
+                    removeUndercutAlert(key);
+                }
+            });
+            undercutState.activeKeys = currentUndercuts;
+            if (newAlerts.length) {
+                undercutState.alerts += newAlerts.length;
+                document.getElementById('uc-alerts').textContent = undercutState.alerts;
+                newAlerts.forEach(function(alert) {
+                    var notifyText;
+                    if (alert.source === 'Bazaar' && alert.undercutBy) {
+                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
+                            + alert.undercutBy.playerName + '（ID ' + alert.undercutBy.playerId + '）'
+                            + ' 压至 ' + formatMoney(alert.compareLow);
+                    } else {
+                        var lowLabel = alert.source === 'Bazaar' ? '巴扎最低' : '市场最低';
+                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
+                            + lowLabel + ' ' + formatMoney(alert.compareLow);
+                    }
+                    GM_notification({
+                        title: 'Torn 压价提醒',
+                        text: notifyText,
+                        timeout: 15000,
+                        onclick: function() { window.focus(); }
+                    });
+                });
+            }
+            info.textContent = currentUndercuts.size
+                ? '发现 ' + currentUndercuts.size + ' 个货物被压价'
+                : '所有货物均为对应渠道最低价';
+        } catch (e) {
+            document.getElementById('uc-error').textContent = '扫描失败：' + e.message;
+            document.getElementById('uc-info').textContent = '';
+        }
+    }
+
+    function stopUndercutMonitor() {
+        if (undercutState.timer) clearInterval(undercutState.timer);
+        undercutState.timer = null;
+        setUndercutUI(false);
+        document.getElementById('uc-next').textContent = '--';
+        document.getElementById('uc-info').textContent = '';
+    }
+
+    document.getElementById('uc-start').addEventListener('click', async function() {
+        var apiKey = saveApiKey();
+        var interval = parseInt(document.getElementById('uc-interval').value, 10) || 60;
+        if (!apiKey) { document.getElementById('uc-error').textContent = '请填写 API Key'; return; }
+        if (interval < 30) { document.getElementById('uc-error').textContent = '间隔不能小于 30 秒'; return; }
+        if (!document.getElementById('uc-bazaar').checked && !document.getElementById('uc-itemmarket').checked) {
+            document.getElementById('uc-error').textContent = '请至少选择一种监听范围';
+            return;
+        }
+        setUndercutUI(true);
+        undercutState.playerId = null;
+        document.getElementById('uc-error').textContent = '';
+        await ucCheck();
+        undercutState.timer = setInterval(async function() {
+            await ucCheck();
+            document.getElementById('uc-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+        }, interval * 1000);
+        document.getElementById('uc-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+    });
+
+    document.getElementById('uc-stop').addEventListener('click', stopUndercutMonitor);
+
     // ─── Company monitor ───
     function setMonitoringUI(on) {
         companyState.monitoring = on;
-        fab.classList.toggle('monitoring', on);
+        updateMonitorFab();
         document.getElementById('ttb-tab-company').classList.toggle('active-monitoring', on);
         document.getElementById('co-start').style.display = on ? 'none' : 'block';
         document.getElementById('co-stop').style.display = on ? 'block' : 'none';
         document.getElementById('co-interval').disabled = on;
-        document.getElementById('ttb-api-key').disabled = on;
+        updateApiKeyInputLock();
         var statusEl = document.getElementById('co-status');
         statusEl.classList.toggle('show', on || companyState.checks > 0);
         statusEl.classList.toggle('stopped', !on && companyState.checks > 0);
@@ -1079,6 +1548,9 @@
     });
 
     document.getElementById('co-stop').addEventListener('click', stopCompanyMonitor);
-    window.addEventListener('beforeunload', stopCompanyMonitor);
+    window.addEventListener('beforeunload', function() {
+        stopCompanyMonitor();
+        stopUndercutMonitor();
+    });
 
 })();
