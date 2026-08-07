@@ -124,6 +124,14 @@ async function handleLoginApi(req, res) {
     }
 }
 
+function isPortalApi(pathname, method) {
+    if (pathname === '/api/login' && method === 'POST') return true;
+    if (pathname === '/api/me' && method === 'GET') return true;
+    if (pathname === '/api/services' && method === 'GET') return true;
+    if (pathname === '/api/logout' && method === 'POST') return true;
+    return false;
+}
+
 function handleProxyRoute(req, res) {
     var ctx = resolveProxyContext(config.services, req.url);
     if (!ctx) return false;
@@ -135,14 +143,18 @@ function handleProxyRoute(req, res) {
     var browserUrl = new URL(req.url, 'http://127.0.0.1');
 
     if (ctx.service.adminToken && !proxyUrl.searchParams.get('token')) {
-        if (browserUrl.pathname === '/webui' || browserUrl.pathname.startsWith('/webui/')) {
+        if (browserUrl.pathname.startsWith('/api/')) {
+            // NapCat API 不走 URL token 重定向，直接转发
+        } else if (browserUrl.pathname === '/webui' || browserUrl.pathname.startsWith('/webui/')) {
             browserUrl.searchParams.set('token', ctx.service.adminToken);
             redirect(res, browserUrl.pathname + browserUrl.search);
         } else {
             proxyUrl.searchParams.set('token', ctx.service.adminToken);
             redirect(res, proxyUrl.pathname + proxyUrl.search);
         }
-        return true;
+        if (!browserUrl.pathname.startsWith('/api/')) {
+            return true;
+        }
     }
 
     if (browserUrl.pathname.endsWith('/web_login')) {
@@ -160,15 +172,18 @@ function handleProxyRoute(req, res) {
 var server = http.createServer(async function(req, res) {
     var url = new URL(req.url, 'http://127.0.0.1');
 
-    if (url.pathname === '/api/login') {
-        await handleLoginApi(req, res);
-        return;
-    }
-
     if (url.pathname.startsWith('/api/')) {
-        var session = requireAuth(req, res);
-        if (!session) return;
-        return handleApi(req, res, url, session);
+        if (isPortalApi(url.pathname, req.method)) {
+            if (url.pathname === '/api/login') {
+                await handleLoginApi(req, res);
+                return;
+            }
+            var session = requireAuth(req, res);
+            if (!session) return;
+            return handleApi(req, res, url, session);
+        }
+        if (handleProxyRoute(req, res)) return;
+        return json(res, 404, { ok: false, error: 'Not Found' });
     }
 
     if (handleProxyRoute(req, res)) return;

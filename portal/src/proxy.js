@@ -28,7 +28,7 @@ export function buildTargetUrl(service, reqUrl) {
     var subPath = url.pathname.slice(prefix.length) || '/';
     if (!subPath.startsWith('/')) subPath = '/' + subPath;
     var target = new URL(subPath + url.search, base.origin);
-    if (service.adminToken) {
+    if (service.adminToken && !subPath.startsWith('/api/')) {
         target.searchParams.set('token', service.adminToken);
     }
     return target;
@@ -178,6 +178,10 @@ export function resolveProxyContext(services, reqUrl) {
     if (napcat && (url.pathname === '/webui' || url.pathname.startsWith('/webui/'))) {
         var prefix = napcat.path.replace(/\/$/, '');
         return { service: napcat, proxyUrl: prefix + url.pathname + url.search };
+    }
+    if (napcat && url.pathname.startsWith('/api/')) {
+        var napcatPrefix = napcat.path.replace(/\/$/, '');
+        return { service: napcat, proxyUrl: napcatPrefix + url.pathname + url.search };
     }
     return null;
 }
