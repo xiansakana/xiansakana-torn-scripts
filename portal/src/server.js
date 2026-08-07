@@ -9,7 +9,7 @@ import {
     getSession,
     verifyLogin
 } from './auth.js';
-import { findProxyService, getServiceEntryHref, proxyHttpRequest, proxyWebSocket } from './proxy.js';
+import { resolveProxyContext, getServiceEntryHref, proxyHttpRequest, proxyWebSocket } from './proxy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '../public');
@@ -124,6 +124,39 @@ async function handleLoginApi(req, res) {
     }
 }
 
+function handleProxyRoute(req, res) {
+    var ctx = resolveProxyContext(config.services, req.url);
+    if (!ctx) return false;
+
+    var proxySession = requireAuth(req, res);
+    if (!proxySession) return true;
+
+    var proxyUrl = new URL(ctx.proxyUrl, 'http://127.0.0.1');
+    var browserUrl = new URL(req.url, 'http://127.0.0.1');
+
+    if (ctx.service.adminToken && !proxyUrl.searchParams.get('token')) {
+        if (browserUrl.pathname === '/webui' || browserUrl.pathname.startsWith('/webui/')) {
+            browserUrl.searchParams.set('token', ctx.service.adminToken);
+            redirect(res, browserUrl.pathname + browserUrl.search);
+        } else {
+            proxyUrl.searchParams.set('token', ctx.service.adminToken);
+            redirect(res, proxyUrl.pathname + proxyUrl.search);
+        }
+        return true;
+    }
+
+    if (browserUrl.pathname.endsWith('/web_login')) {
+        var entry = new URL(getServiceEntryHref(ctx.service), 'http://127.0.0.1');
+        if (ctx.service.adminToken) entry.searchParams.set('token', ctx.service.adminToken);
+        redirect(res, entry.pathname + entry.search);
+        return true;
+    }
+
+    req.url = ctx.proxyUrl;
+    proxyHttpRequest(ctx.service, req, res);
+    return true;
+}
+
 var server = http.createServer(async function(req, res) {
     var url = new URL(req.url, 'http://127.0.0.1');
 
@@ -138,21 +171,7 @@ var server = http.createServer(async function(req, res) {
         return handleApi(req, res, url, session);
     }
 
-    var proxyService = findProxyService(config.services, url.pathname);
-    if (proxyService) {
-        var proxySession = requireAuth(req, res);
-        if (!proxySession) return;
-        if (proxyService.adminToken && !url.searchParams.get('token')) {
-            var redir = new URL(req.url, 'http://127.0.0.1');
-            redir.searchParams.set('token', proxyService.adminToken);
-            return redirect(res, redir.pathname + redir.search);
-        }
-        if (url.pathname.endsWith('/web_login')) {
-            var entry = new URL(getServiceEntryHref(proxyService) + (proxyService.adminToken ? '?token=' + encodeURIComponent(proxyService.adminToken) : ''), 'http://127.0.0.1');
-            return redirect(res, entry.pathname + entry.search);
-        }
-        return proxyHttpRequest(proxyService, req, res);
-    }
+    if (handleProxyRoute(req, res)) return;
 
     if (url.pathname === '/' || url.pathname === '/index.html') {
         var homeSession = requireAuth(req, res);
@@ -174,17 +193,17 @@ var server = http.createServer(async function(req, res) {
 });
 
 server.on('upgrade', function(req, socket, head) {
-    var url = new URL(req.url, 'http://127.0.0.1');
     if (!getSession(req, getSessionSecret())) {
         socket.destroy();
         return;
     }
-    var wsService = findProxyService(config.services, url.pathname);
-    if (!wsService) {
+    var ctx = resolveProxyContext(config.services, req.url);
+    if (!ctx) {
         socket.destroy();
         return;
     }
-    proxyWebSocket(wsService, req, socket, head);
+    req.url = ctx.proxyUrl;
+    proxyWebSocket(ctx.service, req, socket, head);
 });
 
 var host = config.server?.host || '127.0.0.1';

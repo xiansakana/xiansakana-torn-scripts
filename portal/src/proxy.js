@@ -162,6 +162,26 @@ export function findProxyService(services, pathname) {
     });
 }
 
+function findNapcatService(services) {
+    return (services || []).find(function(service) {
+        return service.id === 'napcat' && service.type === 'proxy';
+    });
+}
+
+/** NapCat WebUI 使用绝对路径 /webui/...，需额外挂载到同一反代 */
+export function resolveProxyContext(services, reqUrl) {
+    var url = new URL(reqUrl, 'http://127.0.0.1');
+    var service = findProxyService(services, url.pathname);
+    if (service) return { service: service, proxyUrl: reqUrl };
+
+    var napcat = findNapcatService(services);
+    if (napcat && (url.pathname === '/webui' || url.pathname.startsWith('/webui/'))) {
+        var prefix = napcat.path.replace(/\/$/, '');
+        return { service: napcat, proxyUrl: prefix + url.pathname + url.search };
+    }
+    return null;
+}
+
 export function getServiceEntryHref(service) {
     var base = service.path.replace(/\/$/, '');
     var entry = service.entryPath || '/';

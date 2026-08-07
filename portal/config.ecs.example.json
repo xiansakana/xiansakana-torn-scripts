@@ -29,6 +29,7 @@
       "internalUrl": "http://127.0.0.1:6099",
       "adminToken": "NapCat WebUI token（webui.json）",
       "injectBar": false,
+      "injectBase": false,
       "icon": "💬"
     }
   ]
