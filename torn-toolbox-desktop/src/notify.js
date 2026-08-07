@@ -1,5 +1,5 @@
 import notifier from 'node-notifier';
-import { sanitizeQqText } from './utils.js';
+import { sanitizeQqText, formatApplicationSummary } from './utils.js';
 import { normalizeQqTargets } from './company-watchers.js';
 
 export async function sendDesktopNotification(title, text) {
@@ -82,8 +82,8 @@ function formatCompanyApplicationText(label, newApps) {
     var prefix = label ? '[' + label + '] ' : '';
     var summary = '发现 ' + newApps.length + ' 个新申请';
     var details = newApps.map(function(app) {
-        return app.name + ' (ID ' + app.userId + ')';
-    }).join('、');
+        return formatApplicationSummary(app);
+    }).join('；');
     return prefix + summary + (details ? '：' + details : '');
 }
 

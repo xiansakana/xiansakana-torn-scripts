@@ -18,6 +18,20 @@ function formatNext(ts) {
     return new Date(ts).toLocaleTimeString('zh-CN');
 }
 
+function formatStatValue(value) {
+    if (value == null || value === '') return '?';
+    var num = Number(value);
+    if (!Number.isNaN(num)) return num.toLocaleString('en-US');
+    return String(value);
+}
+
+function formatApplicationStats(stats) {
+    stats = stats || {};
+    return '智力 ' + formatStatValue(stats.intelligence)
+        + ' · 耐力 ' + formatStatValue(stats.endurance)
+        + ' · 体力 ' + formatStatValue(stats.manual_labor);
+}
+
 async function api(path, options) {
     var resp = await fetch('api/' + path, options || {});
     var data = await resp.json();
@@ -60,6 +74,7 @@ function renderCompanyApps(apps) {
         div.className = 'item company';
         div.innerHTML = '<h4>新申请 #' + app.id + (app.watcherLabel ? ' · ' + app.watcherLabel : '') + '</h4>'
             + '<p>申请人：' + app.name + ' (ID ' + app.userId + ') · Lv ' + (app.level || '?') + '</p>'
+            + '<p>属性：' + formatApplicationStats(app.stats) + '</p>'
             + '<p>状态：' + (app.status || '未知') + '</p>'
             + '<p>过期：' + new Date(app.expires * 1000).toLocaleString('zh-CN') + '</p>'
             + '<p>消息：' + (app.message || '无消息') + '</p>';
