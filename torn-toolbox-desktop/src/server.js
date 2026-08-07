@@ -201,11 +201,13 @@ async function handleApi(req, res) {
             }
             if (body.undercut) config.undercut = { ...config.undercut, ...body.undercut };
             if (body.company) {
+                var prevCompanyWatchers = config.company?.watchers || [];
                 config.company = { ...config.company, ...body.company };
                 if (Array.isArray(body.company.watchers)) {
-                    var prevWatchers = config.company.watchers || [];
                     config.company.watchers = body.company.watchers.map(function(watcher, index) {
-                        var prev = prevWatchers.find(function(item) { return item.id === watcher.id; }) || prevWatchers[index] || {};
+                        var prev = prevCompanyWatchers.find(function(item) { return item.id === watcher.id; })
+                            || prevCompanyWatchers[index]
+                            || {};
                         return mergeWatcherConfig(watcher, prev, config.tornApiKey);
                     });
                 }
