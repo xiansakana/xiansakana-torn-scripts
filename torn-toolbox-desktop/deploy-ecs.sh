@@ -39,6 +39,7 @@ fi
 
 echo "==> 启动 torn-toolbox-desktop..."
 pm2 delete torn-toolbox 2>/dev/null || true
+pm2 delete torn-desktop 2>/dev/null || true
 pm2 start src/server.js --name torn-toolbox
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null || true
@@ -46,6 +47,8 @@ pm2 startup systemd -u root --hp /root 2>/dev/null || true
 echo "==> 本机健康检查..."
 sleep 1
 curl -sf -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8790/ || true
+echo "==> 监听地址（应为 0.0.0.0:8790）"
+ss -tlnp | grep 8790 || netstat -tlnp 2>/dev/null | grep 8790 || true
 
 PUBLIC_IP="$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo '你的公网IP')"
 echo ""

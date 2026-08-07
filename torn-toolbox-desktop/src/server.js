@@ -62,7 +62,8 @@ function json(res, status, body) {
 }
 
 function serveStatic(req, res) {
-    var urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+    var urlPath = (req.url || '/').split('?')[0];
+    if (urlPath === '/') urlPath = '/index.html';
     var filePath = path.normalize(path.join(PUBLIC_DIR, urlPath));
     if (!filePath.startsWith(PUBLIC_DIR)) return json(res, 403, { ok: false, error: 'Forbidden' });
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) return json(res, 404, { ok: false, error: 'Not Found' });
