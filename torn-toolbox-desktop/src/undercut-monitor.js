@@ -174,11 +174,27 @@ export class UndercutMonitor extends EventEmitter {
             listings = listings.filter(function(entry) { return selectedIds.has(Number(entry.itemId)); });
         }
 
+        var bazaarCount = listings.filter(function(e) { return e.kind === 'bazaar'; }).length;
+        var imCount = listings.filter(function(e) { return e.kind === 'im'; }).length;
+
         if (!listings.length) {
             state.activeKeys.clear();
             state.alertMap.clear();
+            var scope = [];
+            if (watchBazaar) scope.push('Bazaar');
+            if (watchItemMarket) scope.push('Item Market');
+            var scopeText = scope.join(' / ');
+            this.statusMessage = watcher.label + '：'
+                + (selectedIds.size
+                    ? '指定物品在 ' + scopeText + ' 无在售'
+                    : scopeText + ' 无在售货物');
+            this.emit('state', this.getState());
             return { newAlerts: [], undercutCount: 0 };
         }
+
+        this.statusMessage = watcher.label + '：Bazaar ' + bazaarCount + ' 件 · Item Market '
+            + imCount + ' 件，正在比价...';
+        this.emit('state', this.getState());
 
         var imPriceCache = {};
         var bazaarPriceCache = {};
@@ -188,6 +204,11 @@ export class UndercutMonitor extends EventEmitter {
         for (var i = 0; i < listings.length; i++) {
             var entry = listings[i];
             if (!entry.itemId) continue;
+
+            var channelLabel = entry.kind === 'bazaar' ? 'Bazaar' : 'Item Market';
+            this.statusMessage = watcher.label + '：正在扫描 ' + channelLabel + ' · '
+                + entry.name + '（' + (i + 1) + '/' + listings.length + '）';
+            this.emit('state', this.getState());
 
             var compareLow = null;
             var undercutBy = null;
