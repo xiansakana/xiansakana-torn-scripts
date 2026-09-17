@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 工具箱
 // @namespace    http://tampermonkey.net/
-// @version      1.2.7
+// @version      1.3.3
 // @description  整合购买均价、出售均价、攻击筛选、压价助手、公司监听的统一工具箱
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
@@ -20,16 +20,61 @@
     var API_DELAY_MS = 1000;
     var ATTACKS_API_DELAY_MS = 1000;
     var RATE_LIMIT_RETRIES = 5;
+    var TTB_LANG_KEY = 'ttbLang';
+    var TTB_TIME_MODE_KEY = 'ttbTimeMode';
+    var TTB_TIME_MODES = {
+        torn: { label: 'Torn', offsetHours: 0 },
+        beijing: { label: '北京', offsetHours: 8 }
+    };
     var SELL_LOG_TYPES = {
         bazaar: { ids: [1221, 1226] },
-        market: { ids: [1113, 1104] }
+        market: { ids: [1113, 1104] },
+        trade: { ids: [4441, 4445] }
     };
+    var TTB_HANT_PHRASES = [
+        ['购买', '購買'], ['出售', '出售'], ['均价', '均價'], ['攻击', '攻擊'],
+        ['筛选', '篩選'], ['压价', '壓價'], ['助手', '助手'], ['公司', '公司'],
+        ['监听', '監聽'], ['整合', '整合'], ['记录', '紀錄'], ['查询', '查詢'],
+        ['抵扣', '抵扣'], ['明细', '明細'], ['统计', '統計'], ['数量', '數量'],
+        ['原始花费', '原始花費'], ['实际成本', '實際成本'], ['实际', '實際'],
+        ['纪录', '紀錄'], ['请选择', '請選擇'], ['填写', '填寫'], ['物品', '物品'],
+        ['时间', '時間'], ['范围', '範圍'], ['开始', '開始'], ['结束', '結束'],
+        ['编号', '編號'], ['分母', '分母'], ['分子', '分子'], ['起始', '起始'],
+        ['简单', '簡單'], ['详细', '詳細'], ['链接清单', '連結清單'], ['复制全部', '複製全部'],
+        ['错误', '錯誤'], ['网络', '網路'], ['请求', '請求'], ['返回', '回傳'],
+        ['加载', '載入'], ['重试', '重試'], ['点击', '點擊'], ['搜索', '搜尋'],
+        ['移除', '移除'], ['来源', '來源'], ['勾选', '勾選'], ['收入', '收入'],
+        ['税后', '稅後'], ['税费', '稅費'], ['出售来源', '出售來源'],
+        ['发出的', '發出的'], ['收到的', '收到的'], ['可选', '可選'],
+        ['留空', '留空'], ['全部', '全部'], ['结果', '結果'], ['失败', '失敗'],
+        ['协助', '協助'], ['中断', '中斷'], ['特殊', '特殊'], ['数据', '資料'],
+        ['符合条件', '符合條件'], ['防御者', '防禦者'], ['攻击者', '攻擊者'],
+        ['派系', '派系'], ['未知', '未知'], ['开始监听', '開始監聽'],
+        ['停止', '停止'], ['下次', '下次'], ['扫描', '掃描'], ['检查', '檢查'],
+        ['申请', '申請'], ['当前', '目前'], ['货物', '貨物'], ['市场', '市場'],
+        ['巴扎', '巴扎'], ['最低', '最低'], ['价格', '價格'], ['你的', '你的'],
+        ['差价', '差價'], ['发现', '發現'], ['提醒', '提醒'], ['新申请', '新申請'],
+        ['申请人', '申請人'], ['状态', '狀態'], ['过期', '過期'], ['消息', '訊息'],
+        ['请输入', '請輸入'], ['有效', '有效'], ['获取', '取得'], ['正在', '正在'],
+        ['等待', '等待'], ['过快', '過快'], ['后', '後'], ['秒', '秒'],
+        ['次', '次'], ['笔', '筆'], ['件', '件'], ['混合', '混合'], ['已排除', '已排除'],
+        ['未计入', '未計入'], ['无法', '無法'], ['准确', '準確'], ['分摊', '分攤'],
+        ['金额', '金額'], ['单价', '單價'], ['总价', '總價'], ['总', '總'],
+        ['卖家', '賣家'], ['买家', '買家'], ['匿名', '匿名'], ['收起', '收合'],
+        ['切换繁简', '切換繁簡'], ['切换时间模式', '切換時間模式'],
+        ['时间模式', '時間模式'], ['已停止监听', '已停止監聽'], ['监听中', '監聽中']
+    ];
 
     var itemsCache = [];
     var buySelected = { id: null, name: '' };
     var sellSelected = { id: null, name: '' };
     var ucSelectedItems = new Map();
     var buyMugStats = { total: 0, matched: 0 };
+    var buyTradeSkips = { trades: 0, qty: 0 };
+    var sellTradeSkips = { trades: 0, qty: 0 };
+    var ttbLanguage = GM_getValue(TTB_LANG_KEY, 'zhHans') === 'zhHant' ? 'zhHant' : 'zhHans';
+    var ttbTimeMode = GM_getValue(TTB_TIME_MODE_KEY, 'torn') === 'beijing' ? 'beijing' : 'torn';
+    var ttbLanguageTimer = null;
 
     var companyState = {
         monitoring: false,
@@ -115,6 +160,7 @@
             background: rgba(255,255,255,.1); color: var(--ttb-text);
             cursor: pointer; font-size: 16px; line-height: 1;
         }
+        #ttb-time-toggle { width: auto; min-width: 44px; padding: 0 8px; font-size: 12px; }
         .ttb-icon-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
         .ttb-api-bar {
             padding: 10px 14px; background: var(--ttb-surface);
@@ -157,13 +203,17 @@
             display: block; margin-bottom: 5px; color: var(--ttb-muted);
             font-size: 12px; font-weight: 600; letter-spacing: .2px;
         }
-        .ttb-field input, .ttb-field select {
+        .ttb-field input, .ttb-field select, .ttb-field textarea {
             width: 100%; padding: 9px 10px; border: 1px solid var(--ttb-border);
             border-radius: 8px; background: var(--ttb-surface2); color: var(--ttb-text);
             font-size: 13px; box-sizing: border-box;
         }
-        .ttb-field input::placeholder { color: #8b95a5; }
-        .ttb-field input:focus, .ttb-field select:focus { outline: none; border-color: var(--ttb-accent); }
+        .ttb-field textarea {
+            min-height: 110px; resize: vertical; font-family: Consolas, "Courier New", monospace;
+            line-height: 1.45;
+        }
+        .ttb-field input::placeholder, .ttb-field textarea::placeholder { color: #8b95a5; }
+        .ttb-field input:focus, .ttb-field select:focus, .ttb-field textarea:focus { outline: none; border-color: var(--ttb-accent); }
         .ttb-field select option { background: #32373f; color: var(--ttb-text); }
         .ttb-field input[type="date"], .ttb-field input[type="time"],
         .ttb-field input[type="datetime-local"] { color-scheme: dark; }
@@ -296,9 +346,136 @@
         return (v < 0 ? '-' : '') + '$' + Math.abs(v).toLocaleString();
     }
 
-    function formatTime(ts) { return new Date(ts * 1000).toLocaleString('zh-CN'); }
+    function pad2(n) { return String(n).padStart(2, '0'); }
 
-    function toTimestamp(s) { return s ? Math.floor(new Date(s).getTime() / 1000) : null; }
+    function parseTtbDateTime(s, mode) {
+        if (!s) return null;
+        var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return null;
+        var cfg = TTB_TIME_MODES[mode || ttbTimeMode] || TTB_TIME_MODES.torn;
+        var utcMs = Date.UTC(
+            Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+            Number(m[4]) - cfg.offsetHours, Number(m[5]), Number(m[6] || 0)
+        );
+        return Math.floor(utcMs / 1000);
+    }
+
+    function formatTime(ts, mode) {
+        var cfg = TTB_TIME_MODES[mode || ttbTimeMode] || TTB_TIME_MODES.torn;
+        var d = new Date((Number(ts) + cfg.offsetHours * 3600) * 1000);
+        return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()) +
+            ' ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds()) +
+            ' ' + cfg.label;
+    }
+
+    function timeHtml(ts, mode) {
+        return '<span data-ttb-time="' + Number(ts) + '">' + formatTime(ts, mode) + '</span>';
+    }
+
+    function toTimestamp(s) { return parseTtbDateTime(s); }
+
+    function ttbToHant(text) {
+        return TTB_HANT_PHRASES.reduce(function(out, pair) {
+            return out.split(pair[0]).join(pair[1]);
+        }, String(text));
+    }
+
+    function ttbText(text, lang) {
+        return (lang || ttbLanguage) === 'zhHant' ? ttbToHant(text) : String(text);
+    }
+
+    function updateLanguageButton() {
+        var btn = document.getElementById('ttb-lang-toggle');
+        if (!btn) return;
+        var label = ttbLanguage === 'zhHant' ? '简' : '繁';
+        // 仅在值变化时写入，避免 textContent/title 赋值触发语言 Observer 造成无限循环
+        if (btn.textContent !== label) btn.textContent = label;
+        var nextTitle = ttbText('切换繁简');
+        if (btn.getAttribute('title') !== nextTitle) btn.title = nextTitle;
+    }
+
+    function updateTimeModeButton() {
+        var btn = document.getElementById('ttb-time-toggle');
+        if (!btn) return;
+        var cfg = TTB_TIME_MODES[ttbTimeMode] || TTB_TIME_MODES.torn;
+        if (btn.textContent !== cfg.label) {
+            btn.textContent = cfg.label;
+            if (btn.firstChild) btn.firstChild.__ttbSourceText = cfg.label;
+        }
+        var nextTitle = ttbText('切换时间模式：当前 ' + cfg.label);
+        if (btn.getAttribute('title') !== nextTitle) btn.title = nextTitle;
+    }
+
+    function refreshRenderedTimes(rootEl) {
+        (rootEl || document).querySelectorAll('[data-ttb-time]').forEach(function(el) {
+            el.textContent = formatTime(Number(el.dataset.ttbTime));
+            if (el.firstChild) el.firstChild.__ttbSourceText = el.textContent;
+        });
+    }
+
+    function applyTtbLanguage(target) {
+        var rootEl = target || document.getElementById('ttb-root');
+        if (!rootEl) return;
+        var textNodes = [];
+        var walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, {
+            acceptNode: function(node) {
+                if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                var tag = node.parentNode && node.parentNode.tagName;
+                return tag === 'SCRIPT' || tag === 'STYLE' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+            }
+        });
+        var node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        textNodes.forEach(function(textNode) {
+            if (textNode.__ttbSourceText == null) textNode.__ttbSourceText = textNode.nodeValue;
+            var nextText = ttbText(textNode.__ttbSourceText);
+            if (textNode.nodeValue !== nextText) textNode.nodeValue = nextText;
+        });
+        rootEl.querySelectorAll('[title], [placeholder]').forEach(function(el) {
+            if (el.hasAttribute('title')) {
+                if (!el.dataset.ttbSourceTitle) el.dataset.ttbSourceTitle = el.getAttribute('title');
+                var nextTitle = ttbText(el.dataset.ttbSourceTitle);
+                if (el.getAttribute('title') !== nextTitle) el.setAttribute('title', nextTitle);
+            }
+            if (el.hasAttribute('placeholder')) {
+                if (!el.dataset.ttbSourcePlaceholder) el.dataset.ttbSourcePlaceholder = el.getAttribute('placeholder');
+                var nextPlaceholder = ttbText(el.dataset.ttbSourcePlaceholder);
+                if (el.getAttribute('placeholder') !== nextPlaceholder) el.setAttribute('placeholder', nextPlaceholder);
+            }
+        });
+        updateLanguageButton();
+        updateTimeModeButton();
+    }
+
+    function setTtbLanguage(lang) {
+        ttbLanguage = lang === 'zhHant' ? 'zhHant' : 'zhHans';
+        GM_setValue(TTB_LANG_KEY, ttbLanguage);
+        applyTtbLanguage();
+    }
+
+    function setTtbTimeMode(mode) {
+        ttbTimeMode = mode === 'beijing' ? 'beijing' : 'torn';
+        GM_setValue(TTB_TIME_MODE_KEY, ttbTimeMode);
+        refreshRenderedTimes(document.getElementById('ttb-root'));
+        applyTtbLanguage();
+    }
+
+    function startTtbLanguageObserver(rootEl) {
+        if (!window.MutationObserver || !rootEl) return;
+        var observer = new MutationObserver(function() {
+            clearTimeout(ttbLanguageTimer);
+            ttbLanguageTimer = setTimeout(function() {
+                applyTtbLanguage(rootEl);
+            }, 0);
+        });
+        observer.observe(rootEl, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['title', 'placeholder']
+        });
+    }
 
     function normalizeItems(items) {
         if (Array.isArray(items)) return items;
@@ -551,6 +728,8 @@
             <div class="ttb-header">
                 <h1>🛠 Torn 工具箱</h1>
                 <div class="ttb-header-btns">
+                    <button class="ttb-icon-btn" id="ttb-time-toggle" title="切换时间模式">Torn</button>
+                    <button class="ttb-icon-btn" id="ttb-lang-toggle" title="切换繁简">繁</button>
                     <button class="ttb-icon-btn" id="ttb-minimize" title="收起">−</button>
                 </div>
             </div>
@@ -575,6 +754,13 @@
                                 <input class="ttb-select-search" id="buy-select-search" placeholder="搜索..." />
                                 <div class="ttb-select-list" id="buy-select-list"></div>
                             </div>
+                        </div>
+                    </div>
+                    <div class="ttb-field"><label>购买来源</label>
+                        <div class="ttb-checks">
+                            <label class="ttb-check"><input type="checkbox" id="buy-bazaar" checked /> Bazaar（1225）</label>
+                            <label class="ttb-check"><input type="checkbox" id="buy-market" checked /> Item Market（1112）</label>
+                            <label class="ttb-check"><input type="checkbox" id="buy-trade" checked /> Trade（4440 / 4446）</label>
                         </div>
                     </div>
                     <div class="ttb-row">
@@ -604,6 +790,7 @@
                         <div class="ttb-checks">
                             <label class="ttb-check"><input type="checkbox" id="sell-bazaar" checked /> Bazaar（1221 / 1226）</label>
                             <label class="ttb-check"><input type="checkbox" id="sell-market" checked /> Item Market（1113 / 1104）</label>
+                            <label class="ttb-check"><input type="checkbox" id="sell-trade" checked /> Trade（4441 / 4445）</label>
                         </div>
                     </div>
                     <div class="ttb-row">
@@ -645,11 +832,21 @@
                         <div class="ttb-field"><label>开始</label><input type="datetime-local" id="atk-start" /></div>
                         <div class="ttb-field"><label>结束</label><input type="datetime-local" id="atk-end" /></div>
                     </div>
+                    <div class="ttb-row">
+                        <div class="ttb-field"><label>编号分母</label><input type="number" min="1" step="1" id="atk-number-denominator" value="100" /></div>
+                        <div class="ttb-field"><label>起始分子</label><input type="number" min="0" step="1" id="atk-number-start" value="1" /></div>
+                    </div>
                     <button class="ttb-btn red" id="atk-query">查询并筛选</button>
                     <div class="ttb-msg-error" id="atk-error"></div>
                     <div class="ttb-msg-info" id="atk-info"></div>
                     <div class="ttb-result" id="atk-result">
                         <div class="ttb-card"><div class="ttb-stat-row"><span class="k">符合条件</span><span class="v" id="atk-count">0</span></div></div>
+                        <div class="ttb-field">
+                            <label>简单链接清单</label>
+                            <textarea id="atk-copy-list" readonly placeholder="查询后将在这里生成 1/100 attacklog link 清单"></textarea>
+                        </div>
+                        <button class="ttb-btn" id="atk-copy-all" type="button">复制全部</button>
+                        <div class="ttb-field" style="margin-top:12px;"><label>详细结果</label></div>
                         <div id="atk-list"></div>
                     </div>
                 </div>
@@ -703,6 +900,7 @@
         </div>
     `;
     document.body.appendChild(root);
+    startTtbLanguageObserver(root);
 
     var fab = document.getElementById('ttb-fab');
     var panel = document.getElementById('ttb-panel');
@@ -756,6 +954,14 @@
 
     fab.addEventListener('click', toggleToolbox);
     document.getElementById('ttb-minimize').addEventListener('click', closeToolbox);
+    document.getElementById('ttb-lang-toggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        setTtbLanguage(ttbLanguage === 'zhHant' ? 'zhHans' : 'zhHant');
+    });
+    document.getElementById('ttb-time-toggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        setTtbTimeMode(ttbTimeMode === 'beijing' ? 'torn' : 'beijing');
+    });
     function closeAllSelectDrops() {
         document.querySelectorAll('.ttb-select-drop.show').forEach(function(el) { el.classList.remove('show'); });
     }
@@ -788,6 +994,7 @@
     setupItemSelect('sell', sellSelected, document.getElementById('sell-error'));
     loadUcSelectedItems();
     setupMultiItemSelect('uc', ucSelectedItems, document.getElementById('uc-error'));
+    applyTtbLanguage();
 
     // ─── Buy + Mug ───
     function processPurchaseLogs(logs, targetId) {
@@ -810,12 +1017,24 @@
         return out;
     }
 
-    function processTradeLogs(logs, targetId) {
+    function registerMixedTradeSkip(stats, items, targetId) {
+        if (!stats) return;
+        var qty = (items || []).filter(function(i) {
+            return Number(i.id) === Number(targetId);
+        }).reduce(function(s, i) {
+            return s + toNumber(i.qty);
+        }, 0);
+        if (qty <= 0) return;
+        stats.trades++;
+        stats.qty += qty;
+    }
+
+    function processTradeLogs(logs, targetId, skipped) {
         var groups = {};
         Object.entries(logs).forEach(function(e) {
             var log = e[1], data = log.data || {}, tid = data.parsed_trade_id;
             if (!tid) return;
-            if (!groups[tid]) groups[tid] = { timestamp: log.timestamp, user: data.user, userId: toNumber(data.user) };
+            if (!groups[tid]) groups[tid] = { timestamp: log.timestamp, user: data.user, userId: toNumber(data.user_id || data.user) };
             if (log.log === 4440) groups[tid].money = toNumber(data.money);
             if (log.log === 4446) groups[tid].items = data.items || [];
         });
@@ -827,11 +1046,15 @@
             if (!targets.length) return;
             var qty = targets.reduce(function(s, i) { return s + toNumber(i.qty); }, 0);
             var hasOther = trade.items.some(function(i) { return Number(i.id) !== Number(targetId); });
+            if (hasOther) {
+                registerMixedTradeSkip(skipped, trade.items, targetId);
+                return;
+            }
             trades.push({
                 id: e[0], type: 'trade', typeName: 'Trade', timestamp: trade.timestamp,
-                qty: qty, costEach: hasOther ? 0 : Math.round(trade.money / qty),
-                costTotal: hasOther ? 0 : trade.money, seller: trade.user, sellerId: trade.userId,
-                hasOtherItems: hasOther
+                qty: qty, costEach: qty > 0 ? Math.round(trade.money / qty) : 0,
+                costTotal: trade.money, seller: trade.user, sellerId: trade.userId,
+                hasOtherItems: false
             });
         });
         return trades;
@@ -854,16 +1077,6 @@
             mugs.push({ id: e[0], timestamp: log.timestamp, targetId: targetId, amount: amount });
         });
         return mugs;
-    }
-
-    function applyMixedTradeEstimate(purchases) {
-        var clean = purchases.filter(function(p) { return !p.hasOtherItems; });
-        var q = clean.reduce(function(s, p) { return s + p.qty; }, 0);
-        var c = clean.reduce(function(s, p) { return s + p.costTotal; }, 0);
-        var avg = q > 0 ? Math.round(c / q) : 0;
-        purchases.forEach(function(p) {
-            if (p.hasOtherItems) { p.costEach = avg; p.costTotal = avg * p.qty; p.estimatedCost = true; }
-        });
     }
 
     function applyMugOffsets(purchases, mugs) {
@@ -908,6 +1121,17 @@
         return items.filter(function(p) { return p.type === type; }).reduce(function(s, p) { return s + p.qty; }, 0);
     }
 
+    function getBuyLogIds() {
+        var ids = [];
+        if (document.getElementById('buy-market').checked) ids.push(1112);
+        if (document.getElementById('buy-bazaar').checked) ids.push(1225);
+        return ids;
+    }
+
+    function isBuyTradeChecked() {
+        return document.getElementById('buy-trade').checked;
+    }
+
     function renderBuyResults(purchases, name) {
         var qty = purchases.reduce(function(s, p) { return s + p.qty; }, 0);
         var orig = purchases.reduce(function(s, p) { return s + p.costTotal; }, 0);
@@ -925,9 +1149,20 @@
             statRow('Mug 纪录/匹配', buyMugStats.total + ' / ' + buyMugStats.matched) +
             statRow('Bazaar', qtyByType(purchases, 'bazaar').toLocaleString() + ' 件') +
             statRow('Item Market', qtyByType(purchases, 'market').toLocaleString() + ' 件') +
-            statRow('Trade', qtyByType(purchases, 'trade').toLocaleString() + ' 件');
+            statRow('Trade', qtyByType(purchases, 'trade').toLocaleString() + ' 件') +
+            statRow('混合 Trade（已排除）', buyTradeSkips.trades
+                ? buyTradeSkips.trades + ' 笔 / ' + buyTradeSkips.qty.toLocaleString() + ' 件'
+                : '0 笔');
         var list = document.getElementById('buy-list');
         list.innerHTML = '<div class="ttb-section-title">购买明细</div>';
+        if (buyTradeSkips.trades) {
+            var skip = document.createElement('div');
+            skip.className = 'ttb-item';
+            skip.innerHTML = '<h4>混合 Trade 未计入购买均价</h4><p>已排除 ' +
+                buyTradeSkips.trades + ' 笔，目标物品 ' + buyTradeSkips.qty.toLocaleString() +
+                ' 件，因为同一 trade 内含多种商品，无法准确分摊金额。</p>';
+            list.appendChild(skip);
+        }
         purchases.sort(function(a, b) { return b.timestamp - a.timestamp; }).forEach(function(p) {
             var div = document.createElement('div');
             div.className = 'ttb-item ' + p.type;
@@ -935,10 +1170,9 @@
             var adjEach = p.adjustedCostEach != null ? p.adjustedCostEach : p.costEach;
             var mugLine = p.matchedMugs && p.matchedMugs.length
                 ? '<p class="ttb-note">匹配 Mug：' + p.matchedMugs.map(function(m) {
-                    return formatTime(m.timestamp) + ' ' + formatMoney(m.amount);
+                    return timeHtml(m.timestamp) + ' ' + formatMoney(m.amount);
                 }).join('；') + '</p>' : '';
-            div.innerHTML = '<h4>' + p.typeName + ' · ' + formatTime(p.timestamp) + '</h4>' +
-                (p.estimatedCost ? '<p class="ttb-note">含其他物品，成本按非混合交易均价估算</p>' : '') +
+            div.innerHTML = '<h4>' + p.typeName + ' · ' + timeHtml(p.timestamp) + '</h4>' +
                 '<p>数量 ' + p.qty.toLocaleString() + ' · 原单价 ' + formatMoney(p.costEach) + ' · 原总价 ' + formatMoney(p.costTotal) + '</p>' +
                 '<p><span class="ttb-mug">Mug -' + formatMoney(p.mugOffset || 0) + '</span> · 实际总价 ' + formatMoney(adjTotal) + ' · 实际单价 ' + formatMoney(adjEach) + '</p>' +
                 mugLine +
@@ -952,9 +1186,13 @@
         var res = document.getElementById('buy-result');
         err.textContent = ''; info.textContent = ''; res.classList.remove('show');
         buyMugStats = { total: 0, matched: 0 };
+        buyTradeSkips = { trades: 0, qty: 0 };
         var apiKey = saveApiKey();
+        var buyLogIds = getBuyLogIds();
+        var includeTrade = isBuyTradeChecked();
         if (!apiKey) { err.textContent = '请填写 API Key'; return; }
         if (!buySelected.id) { err.textContent = '请选择物品'; return; }
+        if (!buyLogIds.length && !includeTrade) { err.textContent = '请勾选购买来源'; return; }
         var sd = document.getElementById('buy-start-date').value, ed = document.getElementById('buy-end-date').value;
         if (!sd || !ed) { err.textContent = '请选择时间范围'; return; }
         var startTs = toTimestamp(sd + 'T' + (document.getElementById('buy-start-time').value || '00:00'));
@@ -962,20 +1200,32 @@
         if (startTs >= endTs) { err.textContent = '开始时间不能晚于结束'; return; }
         btn.disabled = true; btn.textContent = '查询中...';
         try {
-            info.textContent = '正在获取购买记录...';
-            var pLogs = await fetchAllLogs(apiKey, '1112,1225', startTs, endTs, function(pg, w, a) {
-                if (w) setRateLimitProgress(info, w, a);
-                else info.textContent = '正在获取购买记录（第 ' + pg + ' 页）...';
-            });
-            var purchases = processPurchaseLogs(pLogs, buySelected.id);
-            info.textContent = '正在获取交易记录...';
-            var tLogs = await fetchAllLogs(apiKey, '4430,4440,4446', startTs, endTs, function(pg, w, a) {
-                if (w) setRateLimitProgress(info, w, a);
-                else info.textContent = '正在获取交易记录（第 ' + pg + ' 页）...';
-            });
-            var all = purchases.concat(processTradeLogs(tLogs, buySelected.id));
-            if (!all.length) { err.textContent = '未找到该物品的购买记录'; info.textContent = ''; return; }
-            applyMixedTradeEstimate(all);
+            var purchases = [];
+            if (buyLogIds.length) {
+                info.textContent = '正在获取购买记录...';
+                var pLogs = await fetchAllLogs(apiKey, buyLogIds.join(','), startTs, endTs, function(pg, w, a) {
+                    if (w) setRateLimitProgress(info, w, a);
+                    else info.textContent = '正在获取购买记录（第 ' + pg + ' 页）...';
+                });
+                purchases = processPurchaseLogs(pLogs, buySelected.id);
+            }
+            var trades = [];
+            if (includeTrade) {
+                info.textContent = '正在获取交易记录...';
+                var tLogs = await fetchAllLogs(apiKey, '4430,4440,4446', startTs, endTs, function(pg, w, a) {
+                    if (w) setRateLimitProgress(info, w, a);
+                    else info.textContent = '正在获取交易记录（第 ' + pg + ' 页）...';
+                });
+                trades = processTradeLogs(tLogs, buySelected.id, buyTradeSkips);
+            }
+            var all = purchases.concat(trades);
+            if (!all.length) {
+                err.textContent = buyTradeSkips.trades
+                    ? '只找到混合 Trade 记录，因无法准确分摊金额，未计入购买均价'
+                    : '未找到该物品的购买记录';
+                info.textContent = '';
+                return;
+            }
             info.textContent = '正在获取 Mug 记录...';
             var mugs = processMugLogs(await fetchAllLogs(apiKey, '8155', startTs, endTs + MUG_WINDOW_SECONDS, function(pg, w, a) {
                 if (w) setRateLimitProgress(info, w, a);
@@ -995,6 +1245,7 @@
         var ids = [];
         if (document.getElementById('sell-bazaar').checked) ids = ids.concat(SELL_LOG_TYPES.bazaar.ids);
         if (document.getElementById('sell-market').checked) ids = ids.concat(SELL_LOG_TYPES.market.ids);
+        if (document.getElementById('sell-trade').checked) ids = ids.concat(SELL_LOG_TYPES.trade.ids);
         return ids;
     }
 
@@ -1003,8 +1254,7 @@
         var totalQty = (log.data.items || []).reduce(function(s, i) { return s + i.qty; }, 0);
         var share = totalQty > 0 ? item.qty / totalQty : 1;
         if (cat !== 'market') {
-            var t = log.data.cost_total != null ? Math.round(log.data.cost_total * share) : grossTotal;
-            return { grossEach: item.qty > 0 ? Math.round(t / item.qty) : 0, grossTotal: t, fee: 0, netEach: item.qty > 0 ? Math.round(t / item.qty) : 0, netTotal: t };
+            return { grossEach: grossEach, grossTotal: grossTotal, fee: 0, netEach: grossEach, netTotal: grossTotal };
         }
         var fee = Math.round((log.data.fee || 0) * share);
         var net = log.data.cost_total != null ? Math.round(log.data.cost_total * share) : grossTotal - fee;
@@ -1019,10 +1269,60 @@
         return (id === 1221 || id === 1226) ? 'bazaar' : (id === 1113 || id === 1104) ? 'market' : null;
     }
 
+    function readTradeMoney(data) {
+        var keys = ['money', 'amount', 'cash', 'value', 'cost', 'price', 'total', 'cost_total', 'total_cost'];
+        for (var i = 0; i < keys.length; i++) {
+            if (data[keys[i]] != null) return toNumber(data[keys[i]]);
+        }
+        return null;
+    }
+
+    function processSellTradeLogs(logs, targetId, skipped) {
+        var groups = {};
+        Object.entries(logs).forEach(function(e) {
+            var log = e[1], data = log.data || {}, tid = data.parsed_trade_id;
+            if (!tid) return;
+            if (!groups[tid]) {
+                groups[tid] = {
+                    timestamp: log.timestamp,
+                    user: data.user,
+                    userId: toNumber(data.user_id || data.user)
+                };
+            }
+            if (log.timestamp < groups[tid].timestamp) groups[tid].timestamp = log.timestamp;
+            if (data.user) groups[tid].user = data.user;
+            if (data.user_id || data.user) groups[tid].userId = toNumber(data.user_id || data.user);
+            if (log.log === 4441) groups[tid].money = readTradeMoney(data);
+            if (log.log === 4445) groups[tid].items = data.items || [];
+        });
+
+        var trades = [];
+        Object.entries(groups).forEach(function(e) {
+            var trade = e[1];
+            if (!trade.items || trade.money == null) return;
+            var targets = trade.items.filter(function(i) { return Number(i.id) === Number(targetId); });
+            if (!targets.length) return;
+            var qty = targets.reduce(function(s, i) { return s + toNumber(i.qty); }, 0);
+            var hasOther = trade.items.some(function(i) { return Number(i.id) !== Number(targetId); });
+            if (hasOther) {
+                registerMixedTradeSkip(skipped, trade.items, targetId);
+                return;
+            }
+            trades.push({
+                id: e[0], type: 'trade', typeName: 'Trade', timestamp: trade.timestamp, qty: qty,
+                grossEach: qty > 0 ? Math.round(trade.money / qty) : 0, grossTotal: trade.money,
+                fee: 0, priceEach: qty > 0 ? Math.round(trade.money / qty) : 0, revenueTotal: trade.money,
+                buyer: trade.userId || trade.user
+            });
+        });
+        return trades;
+    }
+
     document.getElementById('sell-query').addEventListener('click', async function() {
         var btn = this, err = document.getElementById('sell-error'), info = document.getElementById('sell-info');
         var res = document.getElementById('sell-result');
         err.textContent = ''; info.textContent = ''; res.classList.remove('show');
+        sellTradeSkips = { trades: 0, qty: 0 };
         var apiKey = saveApiKey(), logIds = getSellLogIds();
         if (!apiKey) { err.textContent = '请填写 API Key'; return; }
         if (!sellSelected.id) { err.textContent = '请选择物品'; return; }
@@ -1053,7 +1353,16 @@
                         buyer: log.data.buyer || log.data.seller });
                 });
             });
-            if (!sells.length) { err.textContent = '未找到该物品的出售记录'; info.textContent = ''; return; }
+            if (document.getElementById('sell-trade').checked) {
+                sells = sells.concat(processSellTradeLogs(logs, sellSelected.id, sellTradeSkips));
+            }
+            if (!sells.length) {
+                err.textContent = sellTradeSkips.trades
+                    ? '只找到混合 Trade 记录，因无法准确分摊金额，未计入出售均价'
+                    : '未找到该物品的出售记录';
+                info.textContent = '';
+                return;
+            }
             var tQty = sells.reduce(function(s, p) { return s + p.qty; }, 0);
             var tRev = sells.reduce(function(s, p) { return s + p.revenueTotal; }, 0);
             var tFee = sells.reduce(function(s, p) { return s + p.fee; }, 0);
@@ -1064,9 +1373,21 @@
                 statRow('出售均价（税后）', formatMoney(tQty > 0 ? Math.round(tRev / tQty) : 0), 'emphasis') +
                 statRow('Market 税费', formatMoney(tFee)) +
                 statRow('Bazaar', qtyByType(sells, 'bazaar').toLocaleString() + ' 件') +
-                statRow('Item Market', qtyByType(sells, 'market').toLocaleString() + ' 件');
+                statRow('Item Market', qtyByType(sells, 'market').toLocaleString() + ' 件') +
+                statRow('Trade', qtyByType(sells, 'trade').toLocaleString() + ' 件') +
+                statRow('混合 Trade（已排除）', sellTradeSkips.trades
+                    ? sellTradeSkips.trades + ' 笔 / ' + sellTradeSkips.qty.toLocaleString() + ' 件'
+                    : '0 笔');
             var list = document.getElementById('sell-list');
             list.innerHTML = '<div class="ttb-section-title">出售明细</div>';
+            if (sellTradeSkips.trades) {
+                var skip = document.createElement('div');
+                skip.className = 'ttb-item';
+                skip.innerHTML = '<h4>混合 Trade 未计入出售均价</h4><p>已排除 ' +
+                    sellTradeSkips.trades + ' 笔，目标物品 ' + sellTradeSkips.qty.toLocaleString() +
+                    ' 件，因为同一 trade 内含多种商品，无法准确分摊金额。</p>';
+                list.appendChild(skip);
+            }
             sells.sort(function(a, b) { return b.timestamp - a.timestamp; }).forEach(function(p) {
                 var div = document.createElement('div');
                 div.className = 'ttb-item ' + p.type;
@@ -1074,7 +1395,7 @@
                     ? '挂牌 ' + formatMoney(p.grossEach) + ' × ' + p.qty + ' = ' + formatMoney(p.grossTotal) +
                       ' · 税 ' + formatMoney(p.fee) + ' · 实收 ' + formatMoney(p.revenueTotal) + '（均价 ' + formatMoney(p.priceEach) + '）'
                     : '数量 ' + p.qty + ' · 单价 ' + formatMoney(p.priceEach) + ' · 总价 ' + formatMoney(p.revenueTotal);
-                div.innerHTML = '<h4>' + p.typeName + ' · ' + formatTime(p.timestamp) + '</h4><p>' + price + '</p><p>买家ID：' + (p.buyer || '匿名') + '</p>';
+                div.innerHTML = '<h4>' + p.typeName + ' · ' + timeHtml(p.timestamp) + '</h4><p>' + price + '</p><p>买家ID：' + (p.buyer || '匿名') + '</p>';
                 list.appendChild(div);
             });
             info.textContent = '';
@@ -1118,12 +1439,35 @@
             '，派系：' + (a.attacker?.faction?.name || '未知') + ' [' + (a.attacker?.faction?.id || '未知') + ']）</p>' +
             '<p>防御者：' + (a.defender?.name || '未知') + '（ID：' + (a.defender?.id || '未知') +
             '，派系：' + (a.defender?.faction?.name || '未知') + ' [' + (a.defender?.faction?.id || '未知') + ']）</p>' +
-            '<p>开始：' + formatTime(a.started) + ' | 结束：' + formatTime(a.ended) + '</p>' +
+            '<p>开始：' + timeHtml(a.started) + ' | 结束：' + timeHtml(a.ended) + '</p>' +
             '<p>结果：' + (a.result || '未知') + ' | Respect +' + (a.respect_gain || 0) + ' / -' + (a.respect_loss || 0) + '</p>' +
             '<p>Chain：' + (a.chain || 0) + ' | Warlord：' + (a.modifiers?.warlord ?? '无') + '</p>' +
             '<p>Ranked War：' + (a.is_ranked_war ? '是' : '否') + ' | Raid：' + (a.is_raid ? '是' : '否') + ' | Stealthed：' + (a.is_stealthed ? '是' : '否') + '</p>';
         return div;
     }
+
+    function buildAttackCopyList(attacks, denominator, startNumber) {
+        return attacks.map(function(a, index) {
+            return (startNumber + index) + '/' + denominator + ' https://www.torn.com/page.php?sid=attackLog&ID=' + encodeURIComponent(a.code);
+        }).join('\n');
+    }
+
+    document.getElementById('atk-copy-all').addEventListener('click', async function() {
+        var copyList = document.getElementById('atk-copy-list');
+        var info = document.getElementById('atk-info');
+        if (!copyList.value) {
+            info.textContent = '目前没有可复制的链接清单';
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(copyList.value);
+        } catch (e) {
+            copyList.focus();
+            copyList.select();
+            document.execCommand('copy');
+        }
+        info.textContent = '简单链接清单已复制';
+    });
 
     document.getElementById('atk-query').addEventListener('click', async function() {
         var btn = this, err = document.getElementById('atk-error'), info = document.getElementById('atk-info');
@@ -1136,9 +1480,13 @@
         var resultFilter = document.getElementById('atk-result-filter').value;
         var startTs = toTimestamp(document.getElementById('atk-start').value);
         var endTs = toTimestamp(document.getElementById('atk-end').value);
+        var denominator = parseInt(document.getElementById('atk-number-denominator').value, 10);
+        var startNumber = parseInt(document.getElementById('atk-number-start').value, 10);
         if (!apiKey) { err.textContent = '请填写 API Key'; return; }
         if (factionRaw && isNaN(faction)) { err.textContent = '请输入有效的 Faction ID'; return; }
         if (!startTs || !endTs || startTs >= endTs) { err.textContent = '请选择有效时间范围'; return; }
+        if (!Number.isInteger(denominator) || denominator < 1) { err.textContent = '编号分母必须是大于 0 的整数'; return; }
+        if (!Number.isInteger(startNumber) || startNumber < 0) { err.textContent = '起始分子必须是大于或等于 0 的整数'; return; }
         var wb = warlord ? parseFloat(warlord) : null;
         btn.disabled = true; btn.textContent = '查询中...';
         try {
@@ -1161,6 +1509,7 @@
                 return true;
             });
             document.getElementById('atk-count').textContent = filtered.length;
+            document.getElementById('atk-copy-list').value = buildAttackCopyList(filtered, denominator, startNumber);
             var list = document.getElementById('atk-list');
             list.innerHTML = '';
             if (!filtered.length) {
@@ -1282,7 +1631,7 @@
             '<p>你的价格：' + formatMoney(alert.myPrice) + ' · ' + lowLabel + '：' + formatMoney(alert.compareLow) +
             ' · 差价：' + formatMoney(alert.myPrice - alert.compareLow) + '</p>' +
             sellerLine +
-            '<p class="ttb-note">检测时间：' + formatTime(alert.detectedAt) + '</p>';
+            '<p class="ttb-note">检测时间：' + timeHtml(alert.detectedAt) + '</p>';
         var list = document.getElementById('uc-list');
         var existing = list.querySelector('[data-uc-key="' + alert.key + '"]');
         if (existing) list.replaceChild(div, existing);
@@ -1408,19 +1757,18 @@
                 undercutState.alerts += newAlerts.length;
                 document.getElementById('uc-alerts').textContent = undercutState.alerts;
                 newAlerts.forEach(function(alert) {
-                    var tag = alert.source === 'Bazaar' ? '[Bazaar]' : '[Item Market]';
                     var notifyText;
                     if (alert.source === 'Bazaar' && alert.undercutBy) {
-                        notifyText = tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
+                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 被 '
                             + alert.undercutBy.playerName + '（ID ' + alert.undercutBy.playerId + '）'
                             + ' 压至 ' + formatMoney(alert.compareLow);
                     } else {
                         var lowLabel = alert.source === 'Bazaar' ? '巴扎最低' : '市场最低';
-                        notifyText = tag + ' ' + alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
+                        notifyText = alert.name + '：你的 ' + formatMoney(alert.myPrice) + ' 已被压至 '
                             + lowLabel + ' ' + formatMoney(alert.compareLow);
                     }
                     GM_notification({
-                        title: 'Torn 压价 · ' + (alert.source === 'Bazaar' ? 'Bazaar' : 'Item Market'),
+                        title: 'Torn 压价提醒',
                         text: notifyText,
                         timeout: 15000,
                         onclick: function() { window.focus(); }
@@ -1459,9 +1807,9 @@
         await ucCheck();
         undercutState.timer = setInterval(async function() {
             await ucCheck();
-            document.getElementById('uc-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+            document.getElementById('uc-next').innerHTML = timeHtml(Math.floor(Date.now() / 1000) + interval);
         }, interval * 1000);
-        document.getElementById('uc-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+        document.getElementById('uc-next').innerHTML = timeHtml(Math.floor(Date.now() / 1000) + interval);
     });
 
     document.getElementById('uc-stop').addEventListener('click', stopUndercutMonitor);
@@ -1488,7 +1836,7 @@
             '<p>申请人：' + (app.name || '未知') + ' (ID ' + (app.userID || '未知') + ') · Lv ' + (app.level || '未知') + '</p>' +
             '<p>INT ' + (app.stats?.intelligence?.toLocaleString() || '?') + ' · END ' + (app.stats?.endurance?.toLocaleString() || '?') + ' · MAN ' + (app.stats?.manual_labor?.toLocaleString() || '?') + '</p>' +
             '<p>状态：' + (app.status || '未知') + '</p>' +
-            '<p>过期：' + new Date(app.expires * 1000).toLocaleString('zh-CN') + '</p>' +
+            '<p>过期：' + timeHtml(app.expires) + '</p>' +
             '<p>消息：' + (app.message || '无消息') + '</p>';
         document.getElementById('co-list').insertBefore(div, document.getElementById('co-list').firstChild);
     }
@@ -1543,9 +1891,9 @@
         await coCheck();
         companyState.timer = setInterval(async function() {
             await coCheck();
-            document.getElementById('co-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+            document.getElementById('co-next').innerHTML = timeHtml(Math.floor(Date.now() / 1000) + interval);
         }, interval * 1000);
-        document.getElementById('co-next').textContent = new Date(Date.now() + interval * 1000).toLocaleTimeString('zh-CN');
+        document.getElementById('co-next').innerHTML = timeHtml(Math.floor(Date.now() / 1000) + interval);
     });
 
     document.getElementById('co-stop').addEventListener('click', stopCompanyMonitor);
