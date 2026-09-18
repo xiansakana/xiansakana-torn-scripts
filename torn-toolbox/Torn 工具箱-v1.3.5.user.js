@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn 工具箱
 // @namespace    http://tampermonkey.net/
-// @version      1.3.3
+// @version      1.3.5
 // @description  整合购买均价、出售均价、攻击筛选、压价助手、公司监听的统一工具箱
 // @author       xiansakana[2754627]
 // @match        https://www.torn.com/*
@@ -387,23 +387,17 @@
     function updateLanguageButton() {
         var btn = document.getElementById('ttb-lang-toggle');
         if (!btn) return;
-        var label = ttbLanguage === 'zhHant' ? '简' : '繁';
-        // 仅在值变化时写入，避免 textContent/title 赋值触发语言 Observer 造成无限循环
-        if (btn.textContent !== label) btn.textContent = label;
-        var nextTitle = ttbText('切换繁简');
-        if (btn.getAttribute('title') !== nextTitle) btn.title = nextTitle;
+        btn.textContent = ttbLanguage === 'zhHant' ? '简' : '繁';
+        btn.title = ttbText('切换繁简');
     }
 
     function updateTimeModeButton() {
         var btn = document.getElementById('ttb-time-toggle');
         if (!btn) return;
         var cfg = TTB_TIME_MODES[ttbTimeMode] || TTB_TIME_MODES.torn;
-        if (btn.textContent !== cfg.label) {
-            btn.textContent = cfg.label;
-            if (btn.firstChild) btn.firstChild.__ttbSourceText = cfg.label;
-        }
-        var nextTitle = ttbText('切换时间模式：当前 ' + cfg.label);
-        if (btn.getAttribute('title') !== nextTitle) btn.title = nextTitle;
+        btn.textContent = cfg.label;
+        if (btn.firstChild) btn.firstChild.__ttbSourceText = cfg.label;
+        btn.title = ttbText('切换时间模式：当前 ' + cfg.label);
     }
 
     function refreshRenderedTimes(rootEl) {
@@ -758,8 +752,8 @@
                     </div>
                     <div class="ttb-field"><label>购买来源</label>
                         <div class="ttb-checks">
-                            <label class="ttb-check"><input type="checkbox" id="buy-bazaar" checked /> Bazaar（1225）</label>
-                            <label class="ttb-check"><input type="checkbox" id="buy-market" checked /> Item Market（1112）</label>
+                            <label class="ttb-check"><input type="checkbox" id="buy-bazaar" checked /> Bazaar（1220 / 1225）</label>
+                            <label class="ttb-check"><input type="checkbox" id="buy-market" checked /> Item Market（1103 / 1112）</label>
                             <label class="ttb-check"><input type="checkbox" id="buy-trade" checked /> Trade（4440 / 4446）</label>
                         </div>
                     </div>
@@ -1001,13 +995,13 @@
         var out = [];
         Object.entries(logs).forEach(function(e) {
             var log = e[1], data = log.data || {};
-            if (log.log !== 1112 && log.log !== 1225) return;
+            if (log.log !== 1103 && log.log !== 1112 && log.log !== 1220 && log.log !== 1225) return;
             (data.items || []).forEach(function(item) {
                 if (Number(item.id) !== Number(targetId)) return;
                 var qty = toNumber(item.qty), costEach = toNumber(data.cost_each);
                 out.push({
-                    id: e[0], type: log.log === 1112 ? 'market' : 'bazaar',
-                    typeName: log.log === 1112 ? 'Item Market' : 'Bazaar',
+                    id: e[0], type: (log.log === 1103 || log.log === 1112) ? 'market' : 'bazaar',
+                    typeName: (log.log === 1103 || log.log === 1112) ? (log.log === 1103 ? 'Item Market (old)' : 'Item Market') : (log.log === 1220 ? 'Bazaar (old)' : 'Bazaar'),
                     timestamp: log.timestamp, qty: qty, costEach: costEach,
                     costTotal: qty * costEach, seller: data.seller, sellerId: toNumber(data.seller),
                     hasOtherItems: false
@@ -1123,8 +1117,8 @@
 
     function getBuyLogIds() {
         var ids = [];
-        if (document.getElementById('buy-market').checked) ids.push(1112);
-        if (document.getElementById('buy-bazaar').checked) ids.push(1225);
+        if (document.getElementById('buy-market').checked) ids = ids.concat([1103, 1112]);
+        if (document.getElementById('buy-bazaar').checked) ids = ids.concat([1220, 1225]);
         return ids;
     }
 
