@@ -1,0 +1,120 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "/icons/nst@128.png",
+         "16": "/icons/nst@16.png",
+         "32": "/icons/nst@32.png",
+         "48": "/icons/nst@48.png",
+         "64": "/icons/nst@64.png",
+         "96": "/icons/nst@96.png"
+      },
+      "default_popup": "popup.html",
+      "default_title": "NST"
+   },
+   "author": "seintz[2460991]",
+   "background": {
+      "service_worker": "serviceWorker.js"
+   },
+   "content_scripts": [ {
+      "css": [ "styles/contentScript.css" ],
+      "js": [ "contentScript.js" ],
+      "matches": [ "https://www.torn.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "items.js" ],
+      "matches": [ "https://www.torn.com/item.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "crimes.js" ],
+      "matches": [ "https://www.torn.com/crimes.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "bazaar.js" ],
+      "matches": [ "https://www.torn.com/bazaar.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "companies.js" ],
+      "matches": [ "https://www.torn.com/companies.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "displaycase.js" ],
+      "matches": [ "https://www.torn.com/displaycase.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "profiles.js" ],
+      "matches": [ "https://www.torn.com/profiles.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "fight.js" ],
+      "matches": [ "https://www.torn.com/loader.php?sid=attack*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "missions.js" ],
+      "matches": [ "https://www.torn.com/loader.php?sid=missions*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "home.js" ],
+      "matches": [ "https://www.torn.com/index.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "rr.js" ],
+      "matches": [ "https://www.torn.com/page.php?sid=russianRoulette*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "factions.js" ],
+      "matches": [ "https://www.torn.com/factions.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "properties.js" ],
+      "matches": [ "https://www.torn.com/properties.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "city.js" ],
+      "matches": [ "https://www.torn.com/city.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "pmarket.js" ],
+      "matches": [ "https://www.torn.com/pmarket.php*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "search.js" ],
+      "matches": [ "https://www.torn.com/page.php*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "jail.js" ],
+      "matches": [ "https://www.torn.com/jailview.php*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "market.js" ],
+      "matches": [ "https://www.torn.com/imarket.php*" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "shops.js" ],
+      "matches": [ "https://www.torn.com/shops.php*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "Collection of userscript packed as extension",
+   "host_permissions": [ "https://*.torn.com/*", "https://*.tornstats.com/*" ],
+   "icons": {
+      "128": "/icons/nst@128.png",
+      "16": "/icons/nst@16.png",
+      "32": "/icons/nst@32.png",
+      "48": "/icons/nst@48.png",
+      "64": "/icons/nst@64.png",
+      "96": "/icons/nst@96.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmym5mo9tXJZJifJAPfa9RQv5K7eF1OAyg60oHO5P5BT9uCy3EBaddDFP3ZKXHEHF+J6qnm7Rcp7mnkgTnfHJZit9wG5YfhmprIjUSGL5Rnk6inft08rtEwLDytbCoxGMAXOPj8GjePz+OmqlF3AHfuxKx2MeJ0P7K9JdmFe9GaoughBVWQ7HFp1y8BFvrUkGy4kOturSK1Z2ewiPJPje2Pp5l4SQyOAfDxuqUcxCUn1VXNaCcZ7gcHB61vS8JGqxkGG1sTviaNJYuO6UDnvYIgyETN7nMPNDutpm3yS0gKb9bT0oK/gUD+1VQLWYLT6WZwnCujWSXlc8EKc5Z+xc0wIDAQAB",
+   "manifest_version": 3,
+   "name": "NST but for everyone",
+   "options_ui": {
+      "open_in_tab": true,
+      "page": "options.html"
+   },
+   "permissions": [ "alarms", "notifications", "storage", "tts" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.02",
+   "web_accessible_resources": [ {
+      "matches": [ "https://*.torn.com/*" ],
+      "resources": [ "injectFetch.js", "injectXHR.js", "injectWebSo.js" ]
+   } ]
+}

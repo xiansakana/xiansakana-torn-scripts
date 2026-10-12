@@ -1,0 +1,103 @@
+{
+  "version": "1.6.16",
+  "scope": "local mock only",
+  "findings": {
+    "equipmentCycle": [
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getEquippedItems"
+      },
+      {
+        "method": "POST",
+        "path": "/item.php",
+        "step": "actionForm"
+      },
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getEquippedItems"
+      },
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getEquippedItems"
+      },
+      {
+        "method": "POST",
+        "path": "/item.php",
+        "step": "actionForm"
+      },
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getEquippedItems"
+      },
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getUserUpgrades"
+      }
+    ],
+    "modInstall": [
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "reattach"
+      },
+      {
+        "method": "GET",
+        "path": "/page.php",
+        "step": "getEquippedItems"
+      }
+    ],
+    "afterFocusLost": {
+      "focused": false,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/page.php",
+          "step": "getEquippedItems"
+        },
+        {
+          "method": "POST",
+          "path": "/item.php",
+          "step": "actionForm"
+        },
+        {
+          "method": "GET",
+          "path": "/page.php",
+          "step": "getEquippedItems"
+        },
+        {
+          "method": "GET",
+          "path": "/page.php",
+          "step": "getUserUpgrades"
+        }
+      ]
+    },
+    "companyInvalidKey": {
+      "before": 2,
+      "after": 3,
+      "monitorStillActive": true,
+      "paths": [
+        "/v2/torn/items",
+        "/company/",
+        "/company/"
+      ]
+    },
+    "companyOverlap": {
+      "concurrent": 2
+    },
+    "undercutInvalidKey": {
+      "before": 2,
+      "after": 3,
+      "monitorStillActive": true,
+      "paths": [
+        "/v2/torn/items",
+        "/v2/user/basic",
+        "/v2/user/basic"
+      ]
+    }
+  }
+}

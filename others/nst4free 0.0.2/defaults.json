@@ -1,0 +1,287 @@
+{
+  "scripts": {
+    "hideLevel": {
+      "name": "Hide level up",
+      "enabled": false,
+      "description": "Hide level upgrade message and button",
+      "onPage": "All"
+    },
+    "companyRestock": {
+      "name": "Company easy restock",
+      "enabled": false,
+      "description": "Autoset restock amount to daily sold value (double-click on input box)",
+      "onPage": "Company"
+    },
+    "enhanceWar": {
+      "name": "enhance war wall",
+      "enabled": false,
+      "description": "Show tornstats spies on faction wall page and filter members",
+      "onPage": "Faction"
+    },
+    "hideFactionDesc": {
+      "name": "hide faction description",
+      "enabled": false,
+      "description": "hide faction description",
+      "onPage": "Faction"
+    },
+    "hideWarGraph": {
+      "name": "hide war graphs",
+      "enabled": false,
+      "description": "hide war graphs on walls",
+      "onPage": "Faction"
+    },
+    "miniProfileLastAction": {
+      "name": "Miniprofile last action",
+      "enabled": false,
+      "description": "Show last action on miniprofile",
+      "onPage": "All"
+    },
+    "bazaarAutoPrice": {
+      "name": "Bazaar auto price",
+      "enabled": false,
+      "description": "Autoprice item for bazaar (double-click on input box)",
+      "onPage": "Bazaar"
+    },
+    "flightTimer": {
+      "name": "Flight timer",
+      "enabled": false,
+      "description": "Display approximate landing time",
+      "onPage": "All"
+    },
+    "averageXanax": {
+      "name": "average xanax",
+      "enabled": false,
+      "description": "shows the average stats",
+      "onPage": "Profile"
+    },
+    "interceptLink": {
+      "name": "intercept link",
+      "enabled": false,
+      "description": "add link to names in attack logs and list",
+      "onPage": "Fight"
+    },
+    "displayCaseItemID": {
+      "name": "display case items ID",
+      "enabled": false,
+      "description": "shows item ID on display case's manage page",
+      "onPage": "Display Case"
+    },
+    "disableRefresh": {
+      "name": "disable refresh",
+      "enabled": false,
+      "description": "disable refresh on attack page",
+      "onPage": "Fight"
+    },
+    "enhaFight": {
+      "name": "enhance fight",
+      "enabled": false,
+      "description": "enhance fight screen",
+      "onPage": "Fight"
+    },
+    "targetStatus": {
+      "name": "target status",
+      "enabled": false,
+      "description": "add useful info on attack page",
+      "onPage": "Fight"
+    },
+    "needleTimer": {
+      "name": "needles timer",
+      "enabled": false,
+      "description": "display needles timer on item page",
+      "onPage": "Items"
+    },
+    "uglyImages": {
+      "name": "hide new images",
+      "enabled": false,
+      "description": "hide new images from item page",
+      "onPage": "Items"
+    },
+    "ezBuyBazaar": {
+      "name": "ez buy bazaar",
+      "enabled": false,
+      "description": "move confirm button for faster buy",
+      "onPage": "Bazaar"
+    },
+    "ezRR": {
+      "name": "ez rr game",
+      "enabled": false,
+      "description": "extra button to start a new game with all money on hand in 3 clicks",
+      "onPage": "RR"
+    },
+    "ezMoneyDeposit": {
+      "name": "ez money deposit",
+      "enabled": false,
+      "description": "double click $ to deposit all to property, company & faction vault",
+      "onPage": "Company"
+    },
+    "cityFinds": {
+      "name": "city finds",
+      "enabled": false,
+      "description": "highlight items in the city",
+      "onPage": "City"
+    },
+    "statCompare": {
+      "name": "stat compare",
+      "enabled": false,
+      "description": "compare TS stats (xanax, booster, SE, etc..)",
+      "onPage": "Profile"
+    },
+    "employeesLastAction": {
+      "name": "employees last action",
+      "enabled": false,
+      "description": "color employees based on last action",
+      "onPage": "Company"
+    },
+    "missionHelper": {
+      "name": "mission helper",
+      "enabled": false,
+      "description": "tips for missions before accepting",
+      "onPage": "Mission"
+    },
+    "hideResetLoadout": {
+      "name": "hide reset loadout",
+      "enabled": false,
+      "description": "hide reset loadout button",
+      "onPage": "Items"
+    },
+    "leftAlign": {
+      "name": "left align",
+      "enabled": false,
+      "description": "align torn to the left",
+      "onPage": "All"
+    },
+    "chatHighlight": {
+      "name": "chat highlight",
+      "enabled": false,
+      "description": "highlight your name in chat",
+      "onPage": "All"
+    },
+    "equipNoConfirm": {
+      "name": "fast equip",
+      "enabled": false,
+      "description": "remove confirmation from item equip/use",
+      "onPage": "Items"
+    },
+    "pointMugHelper": {
+      "name": "points mug helper",
+      "enabled": false,
+      "description": "highlight profitable points for mugs",
+      "onPage": "PointsMarket"
+    },
+    "pointsQuickbuy": {
+      "name": "points quick buy",
+      "enabled": false,
+      "description": "remove confirmation in points market",
+      "onPage": "PointsMarket"
+    },
+    "searchAttack": {
+      "name": "attack from search",
+      "enabled": false,
+      "description": "Add a link to attack page from advanced search",
+      "onPage": "Search"
+    },
+    "marketNoConfirm": {
+      "name": "market quick buy",
+      "enabled": false,
+      "description": "remove confirmation in item market",
+      "onPage": "Market"
+    },
+    "cshopMaxBuy": {
+      "name": "city shops max buy",
+      "enabled": false,
+      "description": "set quantity to max in city shops",
+      "onPage": "Market"
+    },
+    "netDetails": {
+      "name": "detalied networth",
+      "enabled": false,
+      "description": "more details on live networth gains/losses",
+      "onPage": "Home"
+    }
+  },
+  "notifications": {
+    "ttsNoti": {
+      "enabled": false,
+      "description": "Text-to-Speech for notifications.",
+      "order": 1
+    },
+    "allNoti": {
+      "enabled": true,
+      "description": "Toggle all notifications.",
+      "order": 2
+    },
+    "energy": {
+      "enabled": true,
+      "value": "100%",
+      "description": "Notify when energy reaches value.",
+      "order": 3
+    },
+    "nerve": {
+      "enabled": true,
+      "value": "100%",
+      "description": "Notify when nerve reaches value.",
+      "order": 4
+    },
+    "happy": {
+      "enabled": false,
+      "value": "100%",
+      "description": "Notify when happy reaches value.",
+      "order": 5
+    },
+    "life": {
+      "enabled": false,
+      "value": "<100%",
+      "description": "Notify when life reaches value.",
+      "order": 6
+    },
+    "drugCD": {
+      "enabled": true,
+      "description": "Notify when drug cooldown reaches zero.",
+      "order": 7
+    },
+    "boosterCD": {
+      "enabled": true,
+      "description": "Notify when booster cooldown reaches zero.",
+      "order": 8
+    },
+    "medCD": {
+      "enabled": true,
+      "description": "Notify when medical cooldown reaches zero.",
+      "order": 9
+    },
+    "education": {
+      "enabled": true,
+      "description": "Notify when education course is complete.",
+      "order": 13
+    },
+    "messages": {
+      "enabled": true,
+      "description": "Notify on new messages.",
+      "order": 10
+    },
+    "events": {
+      "enabled": true,
+      "description": "Notify on new events.",
+      "order": 11
+    },
+    "travel": {
+      "enabled": true,
+      "description": "Notify when you reach your destination.",
+      "value": "3",
+      "order": 12
+    }
+  },
+  "nstFight": {
+    "nstOutcome": "leave",
+    "nstWeapon": {
+      "primary": 0,
+      "secondary": 1,
+      "melee": 2
+    },
+    "reloadPrimary": false,
+    "reloadSecondary": false,
+    "nstHold": false,
+    "useTemp": false,
+    "mugThreshold": "2000000"
+  }
+}

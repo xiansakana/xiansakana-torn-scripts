@@ -1,0 +1,553 @@
+:root.dark {
+    --nstText: #ffffff;
+    --nstText2: #989899;
+    --nstText3: #5a5a5e;
+    --nstText4: #404044;
+    --nstGrey: #98989a;
+    --nstDP00: #121212;
+    --nstDP01: #1e1e1e;
+    --nstDP02: #232323;
+    --nstDP03: #252525;
+    --nstDP04: #272727;
+    --nstDP05: #2c2c2c;
+    --nstDP06: #2e2e2e;
+    --nstDP07: #333333;
+    --nstDP08: #363636;
+    --nstDP09: #383838
+}
+
+:root {
+    --nstMain: #ff66ff;
+    --nstMainBG: #082129;
+    --nstPink: #ff66ff;
+    --nstPinkBG: #533c53;
+    --nstRed: #b9462d;
+    --nstGreen: #6cad2b;
+    --nstYellow: #fcc419;
+    --nstBlack: #242424;
+    --nstLink: #006699;
+    --nstLinkHover: #006699;
+    --nstBG: var(--nstDP00);
+    --nstButtonBG: var(--nstDP07);
+    --nstButtonBGHover: var(--nstDP09);
+    --nstInputBG: var(--nstDP04);
+    color: var(--nstText);
+    background-color: var(--nstBG)
+}
+
+.nstMain {
+    font-weight: bold !important;
+    color: var(--nstMain)
+}
+
+.red {
+    font-weight: bold !important;
+    color: var(--nstRed) !important
+}
+
+.green {
+    font-weight: bold !important;
+    color: var(--nstGreen) !important
+}
+
+.yellow {
+    font-weight: bold !important;
+    color: var(--nstYellow) !important
+}
+
+.yellowBack {
+    background-color: var(--nstYellow) !important
+}
+
+.redBack {
+    background-color: var(--nstRed) !important
+}
+
+.nstBox {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box
+}
+
+.nstBox .after::after {
+    display: block;
+    content: "";
+    border-right-width: initial;
+    border-left-width: initial;
+    border-right-color: initial;
+    border-left-color: initial;
+    margin: 10px 0px;
+    border-style: solid none;
+    border-image: initial;
+    border-top: 1px solid #999;
+    border-bottom: 1px solid #ebebeb
+}
+
+.nstBox a,
+.nstBox a:visited {
+    color: #74c0fc
+}
+
+.nstBoxHeader {
+    border-bottom: none;
+    border-radius: 4px 4px 4px 4px;
+    padding: 6px 10px;
+    background-size: 4px;
+    display: flex;
+    font-size: 18px;
+    color: var(--nstMain);
+    background: var(--nstBG);
+    box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, .25)
+}
+
+.nstBoxTitle {
+    font-size: 14px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    line-height: 16px;
+    flex-grow: 2;
+    color: var(--nstMain);
+    text-shadow: rgba(0, 0, 0, .65) 1px 1px 2px
+}
+
+.nstBoxContent {
+    border-radius: 0px 0px 5px 5px;
+    color: #ddd;
+    background-color: #333;
+    border: 1px solid #3b3b3b;
+    border-top: none
+}
+
+.nstBoxContent>p {
+    text-align: center;
+    margin: 10px
+}
+
+.nstRow {
+    margin: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: flex-start
+}
+
+.nstRow:empty {
+    margin: 0
+}
+
+.nstRow[hidden] {
+    margin: 0px !important
+}
+
+.nstRow .nstButton {
+    border: 1px #222 solid;
+    border-radius: 4px;
+    margin: 4px
+}
+
+.nstRow .nstButton:hover {
+    background-color: #444
+}
+
+.nstRow .nstButton:active {
+    position: relative;
+    top: 1px
+}
+
+#sidebar .nstEnergyRefill {
+    color: var(--nstGreen)
+}
+
+#sidebar .nstNerveRefill {
+    color: var(--nstRed)
+}
+
+#nstCompare {
+    max-width: 500px
+}
+
+#nstAvgTable {
+    margin-top: 19px
+}
+
+.nstRow table {
+    width: 100%;
+    background-color: #333;
+    border: 2px solid #1e1e1e
+}
+
+.nstRow>div {
+    flex: 1;
+    margin: 4px
+}
+
+#nstNeedleTimer,
+#nstItemResponse {
+    text-align: center
+}
+
+#nstNeedleTimer {
+    font-size: 14px
+}
+
+.nstRow th,
+.nstRow td {
+    padding: 5px !important;
+    border: 1px solid #232323 !important;
+    color: #ddd
+}
+
+.nstRow th {
+    font-weight: bolder !important;
+    font-size: 13px
+}
+
+#nstAvgTable td {
+    text-align: center
+}
+
+.nstAddQuickFaction,
+.nstAddQuickItem {
+    font-size: 12px;
+    top: 0;
+    left: 0;
+    position: relative;
+    margin-top: 0;
+    width: 34px;
+    height: 31px;
+    text-align: center;
+    float: left
+}
+
+.quickItemButton {
+    filter: sepia(50%) hue-rotate(144deg) saturate(100%) !important
+}
+
+#nstQuickFaction,
+#nstQuickItems {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center
+}
+
+#nstItemResponse {
+    justify-content: center
+}
+
+#nstItemResponse>img.ajax-placeholder {
+    left: 0;
+    margin-left: 0px
+}
+
+#nstQuickFaction div,
+#nstQuickItems div {
+    padding: 0px;
+    align-self: stretch;
+    flex: 0 0 26%;
+    display: flex;
+    justify-content: center;
+    max-width: 100px
+}
+
+#nstQuickFaction button>img,
+#nstQuickItems button>img {
+    vertical-align: middle
+}
+
+#nstQuickFaction button,
+#nstQuickItems button {
+    padding: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    color: #ddd
+}
+
+#nstQuickClose:before {
+    content: "✕"
+}
+
+#nstQuickClose {
+    position: absolute;
+    top: 0px;
+    right: 4px;
+    cursor: pointer;
+    font-size: 12px
+}
+
+.d .items-cont .nstItemWrap.actions {
+    width: 172px !important
+}
+
+.d .nstItemWrap.name-wrap {
+    width: auto !important
+}
+
+div.nstStatList {
+    background-color: #333;
+    color: #ddd
+}
+
+div.nstStatList ul {
+    list-style: none
+}
+
+div.nstStatList ul li {
+    border-bottom: 1px solid;
+    border-bottom-color: #222
+}
+
+div.nstStatList ul li:last-child {
+    border-bottom: 0px
+}
+
+div.nstStatList ul li span.nstDivider {
+    line-height: 14px;
+    display: inline-block;
+    width: 172px;
+    padding: 5px 10px;
+    border-right: 1px solid;
+    border-right-color: #222 !important
+}
+
+div.nstStatList ul li span.nstDivider span {
+    padding-right: 3px;
+    font-weight: bold
+}
+
+div.nstStatList ul li span.stats {
+    display: inline-block;
+    width: 127px;
+    padding: 5px 8px 5px 0px;
+    border-right: 1px solid;
+    text-align: right;
+    line-height: 14px;
+    border-right-color: #222 !important
+}
+
+.d .sortable-list .cont-gray.battle {
+    border-bottom: 0px
+}
+
+.nstItemID {
+    color: var(--nstMain)
+}
+
+button.nstAddQuickCrime,
+button.nstDeleteQCrime {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    margin: 0;
+    cursor: pointer
+}
+
+button.nstAddQuickCrime img:hover,
+button.nstDeleteQCrime img:hover {
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    background-repeat: no-repeat;
+    width: 30px;
+    height: 30px;
+    padding-left: 30px
+}
+
+#nstQuickCrimes {
+    display: flex;
+    flex-wrap: wrap
+}
+
+#nstQuickCrimes form {
+    flex-grow: 1
+}
+
+#nstQuickCrimes div.nstButton {
+    padding: 3px;
+    padding-bottom: 7px
+}
+
+#nstQuickCrimes button>img {
+    vertical-align: middle
+}
+
+#nstQuickCrimes button {
+    margin-right: 5px
+}
+
+.nstCityItem {
+    box-sizing: border-box;
+    box-shadow: #000 0 0 20px 10px;
+    display: block !important;
+    width: 40px !important;
+    height: 40px !important;
+    left: -20px !important;
+    top: -20px !important;
+    z-index: 999 !important;
+    padding: 10px 0;
+    border-width: initial;
+    border-style: none;
+    border-color: initial;
+    border-image: initial;
+    border-radius: 100%;
+    background: rgba(18, 71, 7, .5);
+    transition: width 200ms cubic-bezier(0.65, 0.05, 0.36, 1), height 200ms cubic-bezier(0.65, 0.05, 0.36, 1), left 200ms cubic-bezier(0.65, 0.05, 0.36, 1), top 200ms cubic-bezier(0.65, 0.05, 0.36, 1), padding 200ms cubic-bezier(0.65, 0.05, 0.36, 1), background-color 200ms ease 0ms
+}
+
+.nstCityItem:hover {
+    width: 150px !important;
+    height: 150px !important;
+    left: -75px !important;
+    top: -75px !important;
+    z-index: 1000 !important;
+    padding: 37.5px 0;
+    background: #000
+}
+
+.profitable {
+    background-color: #a4eca4;
+    color: #000
+}
+
+#nstQuickJail>div,
+#nstWallBS>div {
+    display: flex !important;
+    flex-direction: column;
+    text-align: center;
+    justify-content: center !important
+}
+
+#nstQuickJail>div:not(#nstFilterDiv),
+#nstWallBS>div:not(#nstFilterDiv) {
+    align-items: center !important
+}
+
+.nstBSFilter>input {
+    display: block !important;
+    text-align: center !important
+}
+
+#nstQuickJail>div>span,
+#nstWallBS>div>span {
+    font-size: medium;
+    display: block;
+    text-align: center;
+    margin: 10px 0px
+}
+
+.finally-bs-stat {
+    font-family: monospace
+}
+
+.finally-bs-stat>span {
+    display: inline-block;
+    width: 55px;
+    text-align: right
+}
+
+.finally-bs-activeIcon {
+    display: block !important
+}
+
+.finally-bs-asc {
+    border-bottom: 6px solid var(--sort-arrow-color);
+    border-left: 6px solid rgba(0, 0, 0, 0);
+    border-right: 6px solid rgba(0, 0, 0, 0);
+    border-top: 0 solid rgba(0, 0, 0, 0);
+    height: 0;
+    top: -8px;
+    width: 0
+}
+
+.finally-bs-desc {
+    border-bottom: 0 solid rgba(0, 0, 0, 0);
+    border-left: 6px solid rgba(0, 0, 0, 0);
+    border-right: 6px solid rgba(0, 0, 0, 0);
+    border-top: 6px solid var(--sort-arrow-border-color);
+    height: 0;
+    top: -1px;
+    width: 0
+}
+
+.finally-bs-col {
+    text-overflow: clip !important
+}
+
+.listFlex {
+    display: flex;
+    flex-direction: column
+}
+
+.listItem {
+    display: flex;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    margin-right: 4px;
+    margin-left: 4px;
+    justify-content: flex-start;
+    align-items: center;
+    font-size: 14px
+}
+
+.listItem>input {
+    margin: 0px 4px
+}
+
+.nstIntercept {
+    color: var(--default-color)
+}
+
+#fighterino {
+    background-color: #262626;
+    color: #fff;
+    border: 1px solid gray;
+    border-radius: 8px;
+    padding: 12px
+}
+
+.nstItemDiv {
+    margin: 6px;
+    border: 1px solid gray;
+    padding: 4px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center
+}
+
+.nstItemDiv>input {
+    margin: 4px 4px 4px 8px
+}
+
+.nstFRowCenter {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center
+}
+
+.nstFColCenter {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center
+}
+
+.nstNWtable {
+    text-align: center;
+    text-transform: capitalize
+}

@@ -1,0 +1,873 @@
+{
+  "tag": "div",
+  "attributes": {
+    "class": "equipped-items-wrap"
+  },
+  "children": [
+    {
+      "tag": "div",
+      "attributes": {
+        "id": "loadoutsRoot"
+      },
+      "children": [
+        {
+          "tag": "svg",
+          "attributes": {},
+          "children": [
+            {
+              "tag": "defs",
+              "attributes": {},
+              "children": [
+                {
+                  "tag": "lineargradient",
+                  "attributes": {
+                    "id": "loadouts_default_fill_light"
+                  },
+                  "children": [
+                    {
+                      "tag": "stop",
+                      "attributes": {},
+                      "children": []
+                    },
+                    {
+                      "tag": "stop",
+                      "attributes": {},
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "tag": "lineargradient",
+                  "attributes": {
+                    "id": "loadouts_hover_fill_light"
+                  },
+                  "children": [
+                    {
+                      "tag": "stop",
+                      "attributes": {},
+                      "children": []
+                    },
+                    {
+                      "tag": "stop",
+                      "attributes": {},
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "attributes": {
+            "class": "main___kjgVF"
+          },
+          "children": [
+            {
+              "tag": "header",
+              "attributes": {
+                "class": "header___yQXe6"
+              },
+              "children": [
+                {
+                  "tag": "p",
+                  "attributes": {
+                    "class": "title___GTamo",
+                    "role": "heading"
+                  },
+                  "children": []
+                },
+                {
+                  "tag": "nav",
+                  "attributes": {
+                    "class": "icons___CgnNu"
+                  },
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "button___Yyycb setsIcon___bcFaY",
+                        "aria-label": "Loadouts"
+                      },
+                      "children": []
+                    },
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "button___Yyycb iconParentButton___c4Hd4",
+                        "aria-label": "Collapse"
+                      },
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "grayFill___e9h_w"
+                          },
+                          "children": [
+                            {
+                              "tag": "path",
+                              "attributes": {},
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "content___pOoLs"
+              },
+              "children": [
+                {
+                  "tag": "section",
+                  "attributes": {
+                    "class": "currentSlot___g5v4l"
+                  },
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell___WlW1s modelContainer___eg3yy"
+                      },
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "model___APE6u"
+                          },
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "model___Vt_ua",
+                                "aria-label": "Model: Open",
+                                "role": "button"
+                              },
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {},
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "modelWrap___XueIh userModel___EqgC2"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "modelLayers___c246K center___jdJC0",
+                                            "id": "modelLayersContainer"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "model___vSMLw"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "alt": "",
+                                                    "class": "bodyImage___XMJcz",
+                                                    "imagePath": "/images/v2/user_model/body/body-f.webp"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "tag": "map",
+                                                  "attributes": {},
+                                                  "children": []
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "armoursWrap___C3swY"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "div",
+                                                  "attributes": {
+                                                    "class": "armourContainer___ftMzt"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "tag": "div",
+                                                  "attributes": {
+                                                    "class": "armourContainer___ftMzt"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "rightPanel___F5lQr"
+                      },
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "cell___WlW1s itemReviewContainer___ACis1"
+                          },
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "itemReview___LalQU glow-yellow-background"
+                              },
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "type___w2Nxq",
+                                    "aria-label": "Item type is \"Melee\""
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "bonus___VB00a bonusWeapon0___fQs_z",
+                                    "aria-label": "\"Plunder\" bonus: 24% increased money mugged on final hit"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "i",
+                                      "attributes": {
+                                        "class": "bonus-attachment-plunder"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "bonus___VB00a bonusWeapon1___wt64_",
+                                    "aria-label": "No bonus attached"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "i",
+                                      "attributes": {
+                                        "class": "bonus-attachment-blank-bonus-25"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "arrowLeft___ecbGO",
+                                    "aria-label": "Select previous item"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "iconDark___q1Wnb"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "g",
+                                          "attributes": {},
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "attributes": {},
+                                              "children": []
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "img",
+                                  "attributes": {
+                                    "class": "img___fsbAq",
+                                    "alt": "Metal Nunchaku",
+                                    "imagePath": "/images/items/395/large.png"
+                                  },
+                                  "children": []
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "arrowRight___H7a7r",
+                                    "aria-label": "Select next item"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "iconDark___q1Wnb"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "g",
+                                          "attributes": {},
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "attributes": {},
+                                              "children": []
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "exp___p0zse",
+                                    "aria-label": "Exp is 100%"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "perc___dbowQ"
+                                      },
+                                      "children": []
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "tooltipActivator___kTfTz"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "attributes": {
+                                    "class": "itemAbility___EV_5O damage___drfAX",
+                                    "aria-label": "Damage bonus is 68.27"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "i",
+                                      "attributes": {
+                                        "class": "accuracyBonusIcon___CNQ6P demageIcon___Wbb1W"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "role": "button",
+                                    "class": "ammo___uuS7O",
+                                    "aria-label": "Ammo amount is eternity"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "ammoDescription___tJrWE"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "i",
+                                          "attributes": {
+                                            "class": "eternity___c_zbB"
+                                          },
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "span",
+                                  "attributes": {
+                                    "class": "itemAbility___EV_5O accuracy___pRy4M",
+                                    "aria-label": "Accuracy bonus is 65.98"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "i",
+                                      "attributes": {
+                                        "class": "accuracyBonusIcon___CNQ6P accuracyIcon___J1lNG"
+                                      },
+                                      "children": []
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "cell___WlW1s itemsContainer___u9HQV"
+                          },
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "items___FNeZ_"
+                              },
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "equippedItems___PJDaV"
+                                  },
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn glow-red-border"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw",
+                                            "aria-label": "Select \"AK-47\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-red-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "AK-47",
+                                                    "imagePath": "/images/items/26/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn glow-yellow-border"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw",
+                                            "aria-label": "Select \"Cobra Derringer\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-yellow-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "Cobra Derringer",
+                                                    "imagePath": "/images/items/177/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn active___KVKVt glow-yellow-border"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw",
+                                            "aria-label": "Item \"Metal Nunchaku\" selected"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-yellow-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "Metal Nunchaku",
+                                                    "imagePath": "/images/items/395/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Melatonin\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "Melatonin",
+                                                    "imagePath": "/images/items/464/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Empty\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO blank___fAiWC",
+                                                    "alt": "Empty",
+                                                    "imagePath": "/images/items/silhouettes/head.svg"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Empty\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO blank___fAiWC",
+                                                    "alt": "Empty",
+                                                    "imagePath": "/images/items/silhouettes/body.svg"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Empty\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO blank___fAiWC",
+                                                    "alt": "Empty",
+                                                    "imagePath": "/images/items/silhouettes/legs.svg"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Empty\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO blank___fAiWC",
+                                                    "alt": "Empty",
+                                                    "imagePath": "/images/items/silhouettes/feet.svg"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Empty\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO blank___fAiWC",
+                                                    "alt": "Empty",
+                                                    "imagePath": "/images/items/silhouettes/hands.svg"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Santa Boots\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "Santa Boots",
+                                                    "imagePath": "/images/items/606/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "itemWrapper___XGlrn"
+                                      },
+                                      "children": [
+                                        {
+                                          "tag": "button",
+                                          "attributes": {
+                                            "class": "item___nQwMw defaultItem___Ry1Iq",
+                                            "aria-label": "Select \"Bikini\" item"
+                                          },
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "glowBox___vb1Oz glow-default-background"
+                                              },
+                                              "children": [
+                                                {
+                                                  "tag": "img",
+                                                  "attributes": {
+                                                    "class": "img___egdlO",
+                                                    "alt": "Bikini",
+                                                    "imagePath": "/images/items/624/medium.png"
+                                                  },
+                                                  "children": []
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "link",
+      "attributes": {},
+      "children": []
+    },
+    {
+      "tag": "div",
+      "attributes": {
+        "class": "ttb-loadout-live"
+      },
+      "children": [
+        {
+          "tag": "span",
+          "attributes": {
+            "data-category": "Secondary",
+            "data-item": "",
+            "title": "根据服务器确认的操作实时显示；未修改 Torn 保存的 loadout 配置"
+          },
+          "children": []
+        },
+        {
+          "tag": "span",
+          "attributes": {
+            "data-category": "Melee",
+            "data-item": "",
+            "title": "根据服务器确认的操作实时显示；未修改 Torn 保存的 loadout 配置"
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

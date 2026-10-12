@@ -1,0 +1,34 @@
+{
+  "version": "1.6.19",
+  "scope": "local mocks only",
+  "checks": {
+    "equipment": [
+      {
+        "method": "POST",
+        "step": "actionForm"
+      },
+      {
+        "method": "POST",
+        "step": "actionForm"
+      }
+    ],
+    "modInstall": [
+      {
+        "method": "GET",
+        "step": "reattach"
+      }
+    ],
+    "focusLoss": [
+      {
+        "method": "POST",
+        "step": "actionForm"
+      }
+    ],
+    "passiveXHR": true,
+    "companyInvalidKeyStopped": true,
+    "undercutInvalidKeyStopped": true,
+    "sharedSpacing": true,
+    "noOverlapOrRestart": true,
+    "stoppedInitialTask": true
+  }
+}

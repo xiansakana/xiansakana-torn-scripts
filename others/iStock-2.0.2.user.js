@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         iStock
 // @namespace    TornExtensions
-// @version      2.0.1
+// @version      2.0.2
 // @description  none
 // @author       htys [1545351]
 // @match        https://www.torn.com/*.php*
@@ -876,6 +876,13 @@
         $("#cash_position").text(`${percentage.toFixed(2)}%  ($${toThousands(Math.round(cash))})`);
     }
     function bindTableEvents() {
+        // Persist only the setting the user changed. A transient empty table
+        // during mobile/desktop view switching is not an empty configuration.
+        $('#significant_change, #stack_change, #significant_change_percent, #stack_change_percent, #stack_change_time_window')
+            .off('change.istockSettings').on('change.istockSettings', function() {
+                const key = {significant_change:'is_significant_change',stack_change:'is_stack_change'}[this.id] || this.id;
+                updateLocalStorage('ISTOCK', key, this.type === 'checkbox' ? (this.checked ? 1 : 0) : this.value);
+            });
         // 单击图标快速定位股票
         $("td.istock-logo").off('click').on('click', function() {
             const stock_id = $(this).parent().attr("stockid");
@@ -987,7 +994,6 @@
     
     function updatePrice() {
         console.log("updatePrice per 5s")
-        let transaction_object = {};
         const target_nodes = $("#istock-table").find("td.istock-currentprice");
         //const name_containers = $("[class^='nameContainer___']");
         const stock_node = $("[class^='stock___']");
@@ -1095,25 +1101,9 @@
                 current_cap += parseInt(cap);
                 current_profit += profit;
             }
-            /*
-            表格信息存入array，之后会存入localstorage
-            */
-            const merge = $(this).siblings(".istock-merge").children(":checked").length ? 1 : 0;
-            const exclude = $(this).siblings(".istock-exclude").children(":checked").length ? 1 : 0;
-            transaction_object[transcastion_id] = {
-                "merge": merge,
-                "exclude": exclude
-            };
         });
-        /*
-        正式存入localstorage
-        */
-        transaction_object["is_significant_change"] = $("#significant_change:checked").length ? 1 : 0;
-        transaction_object["significant_change_percent"] = $("#significant_change_percent").val();
-        transaction_object["is_stack_change"] = $("#stack_change:checked").length ? 1 : 0;
-        transaction_object["stack_change_percent"] = $("#stack_change_percent").val();
-        transaction_object["stack_change_time_window"] = $("#stack_change_time_window").val();
-        window.localStorage.setItem("ISTOCK", JSON.stringify(transaction_object));
+        // Price updates never save DOM-derived selections. The DOM may be
+        // empty or rebuilding while switching Desktop View.
 
         /*
         更新顶部提示信息

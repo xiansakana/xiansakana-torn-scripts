@@ -1,0 +1,203 @@
+:root.dark {
+    --nstText: #ffffff;
+    --nstText2: #989899;
+    --nstText3: #5a5a5e;
+    --nstText4: #404044;
+    --nstGrey: #98989a;
+    --nstDP00: #121212;
+    --nstDP01: #1e1e1e;
+    --nstDP02: #232323;
+    --nstDP03: #252525;
+    --nstDP04: #272727;
+    --nstDP05: #2c2c2c;
+    --nstDP06: #2e2e2e;
+    --nstDP07: #333333;
+    --nstDP08: #363636;
+    --nstDP09: #383838
+}
+
+:root {
+    --nstMain: #428ca5;
+    --nstMainBG: #082129;
+    --nstPink: #ff66ff;
+    --nstPinkBG: #533c53;
+    --nstRed: #b9462d;
+    --nstGreen: #6cad2b;
+    --nstYellow: #fcc419;
+    --nstBlack: #242424;
+    --nstLink: #006699;
+    --nstLinkHover: #006699;
+    --nstBG: var(--nstDP00);
+    --nstButtonBG: var(--nstDP07);
+    --nstButtonBGHover: var(--nstDP09);
+    --nstInputBG: var(--nstDP04);
+    color: var(--nstText);
+    background-color: var(--nstBG)
+}
+
+.nstMain {
+    font-weight: bold !important;
+    color: var(--nstMain)
+}
+
+.red {
+    font-weight: bold !important;
+    color: var(--nstRed) !important
+}
+
+.green {
+    font-weight: bold !important;
+    color: var(--nstGreen) !important
+}
+
+.yellow {
+    font-weight: bold !important;
+    color: var(--nstYellow) !important
+}
+
+.yellowBack {
+    background-color: var(--nstYellow) !important
+}
+
+.redBack {
+    background-color: var(--nstRed) !important
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    cursor: default;
+    line-height: 1.4
+}
+
+div {
+    display: block
+}
+
+button {
+    min-width: 80px;
+    height: 24px;
+    line-height: 18px;
+    color: inherit;
+    background-color: var(--nstButtonBG);
+    border-radius: 4px;
+    border-style: none;
+    box-sizing: border-box;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 500;
+    list-style: none;
+    margin: 0;
+    outline: none;
+    position: relative;
+    text-align: center;
+    text-decoration: none;
+    transition: color 100ms;
+    vertical-align: baseline;
+    user-select: none;
+    -webkit-user-select: none
+}
+
+button:hover {
+    background-color: var(--nstButtonBGHover)
+}
+
+button:active {
+    position: relative;
+    top: 1px;
+    border: none
+}
+
+button:active {
+    position: relative;
+    top: 1px
+}
+
+button:focus,
+input:focus {
+    outline: none
+}
+
+input[type=text],
+input[type=password],
+select {
+    height: 24px;
+    line-height: 18px;
+    box-sizing: border-box;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+    border: 0;
+    border-radius: 4px;
+    color: var(--nstText);
+    background-color: var(--nstInputBG)
+}
+
+a {
+    color: var(--nstLink);
+    text-decoration: none;
+    cursor: pointer
+}
+
+a:hover {
+    color: var(--nstLinkHover)
+}
+
+label {
+    cursor: inherit
+}
+
+.bold {
+    font-weight: bold
+}
+
+.error {
+    color: var(--nstRed)
+}
+
+.text2 {
+    color: var(--nstText2)
+}
+
+.logo {
+    font-family: "Firacode";
+    letter-spacing: .6px;
+    font-weight: normal
+}
+
+html {
+    width: 300px;
+    height: auto;
+    background-color: var(--nstBG)
+}
+
+body {
+    text-align: center;
+    margin: 10px
+}
+
+.title {
+    font-size: 1.5em;
+    font-weight: bold
+}
+
+div.buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between
+}
+
+div>a {
+    border-radius: 4px;
+    color: var(--nstText)
+}
+
+div.buttons,
+div.messages {
+    margin-top: 10px
+}
+
+#nstApikey {
+    margin-right: 4px
+}
